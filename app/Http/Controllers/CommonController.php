@@ -14,6 +14,7 @@ use App\Helpers\MessageHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -45,11 +46,11 @@ class CommonController extends Controller
             $email = $request->input('Email');
             $password = $request->input('Password');
 
-            // Find user by email first
             $user = User::with('role')
                 ->where('email', $email)
                 ->where('is_active', true)
                 ->first();
+
 
             if (!$user) {
                 return response()->json(
@@ -71,6 +72,7 @@ class CommonController extends Controller
                 // AES encrypted password - decrypt and compare
                 try {
                     $decryptedPassword = AesEncryptionHelper::decrypt($user->password_hash);
+
                     if ($decryptedPassword !== $password) {
                         return response()->json(
                             MessageHelper::unauthorized('Invalid credentials'),
@@ -154,11 +156,11 @@ class CommonController extends Controller
             $structuredMenus = [];
             foreach ($parentMenus as $parent) {
                 $parentArray = (array) $parent;
-                
+
                 // Get children for this parent
                 $children = $childMenus->where('parent_menu_id', $parent->menu_id)->values();
                 $parentArray['sub_links'] = $children->toArray();
-                
+
                 $structuredMenus[] = $parentArray;
             }
 

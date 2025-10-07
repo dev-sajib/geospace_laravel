@@ -80,22 +80,45 @@ Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'auth:api' ] ], function () 
         Route::patch( 'contracts/{id}', [ ContractManagementController::class, 'update' ] );
         Route::delete( 'contracts/{id}', [ ContractManagementController::class, 'destroy' ] );
         // Timesheet Statistics
-        Route::get('timesheets/stats', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'statistics']);
+        Route::get( 'timesheets/stats', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'statistics'
+        ] );
 
         // Pending Timesheets
-        Route::get('timesheets/pending', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'pendingTimesheets']);
+        Route::get( 'timesheets/pending', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'pendingTimesheets'
+        ] );
 
+        // Approved Timesheets - ADD THIS LINE
+        Route::get( 'timesheets/approved', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'approvedTimesheets'
+        ] );
         // Timesheet CRUD Operations
-        Route::get('timesheets', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'index']);
-        Route::post('timesheets', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'store']);
-        Route::get('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'show']);
-        Route::put('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'update']);
-        Route::patch('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'update']);
-        Route::delete('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'destroy']);
+        Route::get( 'timesheets', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'index' ] );
+        Route::post( 'timesheets', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'store' ] );
+        Route::get( 'timesheets/{id}', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'show' ] );
+        Route::put( 'timesheets/{id}', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'update' ] );
+        Route::patch( 'timesheets/{id}', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'update'
+        ] );
+        Route::delete( 'timesheets/{id}', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'destroy'
+        ] );
 
         // Timesheet Approval Actions
-        Route::post('timesheets/{id}/approve', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'approve']);
-        Route::post('timesheets/{id}/reject', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'reject']);
+        Route::post( 'timesheets/{id}/approve', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'approve'
+        ] );
+        Route::post( 'timesheets/{id}/reject', [
+            App\Http\Controllers\Admin\TimesheetManagementController::class,
+            'reject'
+        ] );
 
     } );
 } );

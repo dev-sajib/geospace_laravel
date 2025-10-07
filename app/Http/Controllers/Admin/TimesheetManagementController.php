@@ -686,4 +686,70 @@ class TimesheetManagementController extends Controller
             ], 500);
         }
     }
+    /**
+     * Get approved timesheets
+     * GET /api/v1/admin/timesheets/approved
+     */
+    public function approvedTimesheets(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $companyId = $request->input('company_id');
+
+            $query = DB::table('timesheets as t')
+                       ->leftJoin('contracts as c', 't.contract_id', '=', 'c.contract_id')
+                       ->leftJoin('projects as p', 'c.project_id', '=', 'p.project_id')
+                       ->leftJoin('users as u', 't.freelancer_id', '=', 'u.user_id')
+                       ->leftJoin('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                       ->leftJoin('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                       ->leftJoin('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
+                       ->leftJoin('users as reviewer', 't.reviewed_by', '=', 'reviewer.user_id')
+                       ->leftJoin('user_details as reviewer_details', 'reviewer.user_id', '=', 'reviewer_details.user_id')
+                       ->select(
+                           't.timesheet_id',
+                           't.contract_id',
+                           't.freelancer_id',
+                           't.company_id',
+                           't.project_id',
+                           't.start_date',
+                           't.end_date',
+                           't.total_hours',
+                           't.hourly_rate',
+                           't.total_amount',
+                           't.status_id',
+                           'ts.status_name as status_display_name',
+                           't.submitted_at',
+                           't.reviewed_at',
+                           't.reviewed_by',
+                           'c.contract_title',
+                           'c.hourly_rate as contract_hourly_rate',
+                           'p.project_title',
+                           'cd.company_name',
+                           DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name"),
+                           'u.email as freelancer_email',
+                           DB::raw("CONCAT(reviewer_details.first_name, ' ', reviewer_details.last_name) as reviewed_by_name"),
+                           DB::raw('t.total_amount as calculated_amount')
+                       )
+                       ->where('t.status_id', 2); // Status 2 = Approved
+
+            if ($companyId) {
+                $query->where('t.company_id', $companyId);
+            }
+
+            $timesheets = $query->orderBy('t.reviewed_at', 'desc')->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Approved timesheets retrieved successfully',
+                'data' => $timesheets
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve approved timesheets',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
