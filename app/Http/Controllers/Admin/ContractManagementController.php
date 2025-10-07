@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 
@@ -14,13 +15,13 @@ class ContractManagementController extends Controller
      * Display a listing of all contracts
      * GET /api/admin/contracts
      */
-    public function index(Request $request)
+    public function index()
     {
         try {
-            $perPage = $request->input('per_page', 15);
-            $status = $request->input('status');
-            $companyId = $request->input('company_id');
-            $freelancerId = $request->input('freelancer_id');
+//            $perPage = $request->input('per_page', 15);
+//            $status = $request->input('status');
+//            $companyId = $request->input('company_id');
+//            $freelancerId = $request->input('freelancer_id');
 
             $query = DB::table('contracts as c')
                        ->leftJoin('projects as p', 'c.project_id', '=', 'p.project_id')
@@ -31,6 +32,7 @@ class ContractManagementController extends Controller
                        ->select(
                            'c.*',
                            'p.project_title',
+                           'p.location',
                            'p.project_type',
                            'cd.company_name',
                            'cu.email as company_email',
@@ -38,19 +40,7 @@ class ContractManagementController extends Controller
                            DB::raw("CONCAT(fud.first_name, ' ', fud.last_name) as freelancer_name"),
                            'fud.profile_image as freelancer_image'
                        );
-
-            // Apply filters
-            if ($status) {
-                $query->where('c.status', $status);
-            }
-            if ($companyId) {
-                $query->where('c.company_id', $companyId);
-            }
-            if ($freelancerId) {
-                $query->where('c.freelancer_id', $freelancerId);
-            }
-
-            $contracts = $query->orderBy('c.created_at', 'desc')->paginate($perPage);
+            $contracts = $query->get();
 
             return response()->json([
                 'success' => true,

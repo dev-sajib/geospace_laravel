@@ -246,7 +246,7 @@ class UserManagementController extends Controller
             }
 
             $user = User::find($request->input('UserId'));
-            
+
             if (!$user) {
                 return response()->json(
                     MessageHelper::notFound('User not found'),
@@ -277,14 +277,14 @@ class UserManagementController extends Controller
             DB::commit();
 
             $message = $request->input('IsActive') ? 'User activated successfully' : 'User deactivated successfully';
-            
+
             return response()->json(
                 MessageHelper::success($message)
             );
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json(
                 MessageHelper::error('Failed to update user status: ' . $e->getMessage()),
                 500
@@ -314,7 +314,7 @@ class UserManagementController extends Controller
             }
 
             $user = User::find($request->input('UserId'));
-            
+
             if (!$user) {
                 return response()->json(
                     MessageHelper::notFound('User not found'),
@@ -361,7 +361,7 @@ class UserManagementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json(
                 MessageHelper::error('Failed to verify user: ' . $e->getMessage()),
                 500

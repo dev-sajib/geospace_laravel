@@ -6,6 +6,8 @@ use App\Http\Controllers\CommonController;
 use App\Http\Controllers\Company\HomeController as CompanyHomeController;
 use App\Http\Controllers\Freelancer\HomeController as FreelancerHomeController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\ContractManagementController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -68,16 +70,33 @@ Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'auth:api' ] ], function () 
         Route::post( 'UpdateUserStatus', [ UserManagementController::class, 'updateUserStatus' ] );
         Route::post( 'VerifyUser', [ UserManagementController::class, 'verifyUser' ] );
         Route::get( 'GetUserDetails', [ UserManagementController::class, 'getUserDetails' ] );
-        // Contract Statistics
-        Route::get( '/contracts/stats', [ ContractManagementController::class, 'statistics' ] );
 
-        // Contract CRUD Operations
-        Route::get( '/contracts', [ ContractManagementController::class, 'index' ] );
-        Route::post( '/contracts', [ ContractManagementController::class, 'store' ] );
-        Route::get( '/contracts/{id}', [ ContractManagementController::class, 'show' ] );
-        Route::put( '/contracts/{id}', [ ContractManagementController::class, 'update' ] );
-        Route::patch( '/contracts/{id}', [ ContractManagementController::class, 'update' ] );
-        Route::delete( '/contracts/{id}', [ ContractManagementController::class, 'destroy' ] );
+        //CONTRACTS API
+        Route::get( 'contracts/stats', [ ContractManagementController::class, 'statistics' ] );
+        Route::get( 'contracts', [ ContractManagementController::class, 'index' ] );
+        Route::post( 'contracts', [ ContractManagementController::class, 'store' ] );
+        Route::get( 'contracts/{id}', [ ContractManagementController::class, 'show' ] );
+        Route::put( 'contracts/{id}', [ ContractManagementController::class, 'update' ] );
+        Route::patch( 'contracts/{id}', [ ContractManagementController::class, 'update' ] );
+        Route::delete( 'contracts/{id}', [ ContractManagementController::class, 'destroy' ] );
+        // Timesheet Statistics
+        Route::get('timesheets/stats', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'statistics']);
+
+        // Pending Timesheets
+        Route::get('timesheets/pending', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'pendingTimesheets']);
+
+        // Timesheet CRUD Operations
+        Route::get('timesheets', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'index']);
+        Route::post('timesheets', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'store']);
+        Route::get('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'show']);
+        Route::put('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'update']);
+        Route::patch('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'update']);
+        Route::delete('timesheets/{id}', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'destroy']);
+
+        // Timesheet Approval Actions
+        Route::post('timesheets/{id}/approve', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'approve']);
+        Route::post('timesheets/{id}/reject', [App\Http\Controllers\Admin\TimesheetManagementController::class, 'reject']);
+
     } );
 } );
 
