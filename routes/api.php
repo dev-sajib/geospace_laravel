@@ -7,127 +7,101 @@ use App\Http\Controllers\Company\HomeController as CompanyHomeController;
 use App\Http\Controllers\Freelancer\HomeController as FreelancerHomeController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ContractManagementController;
-
+use App\Http\Controllers\Admin\TimesheetManagementController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes - Version 1
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
+| All routes are prefixed with /api/v1
+| Authentication: JWT via 'auth:api' middleware
 */
 
-// Public routes (no authentication required)
-Route::group( [ 'prefix' => 'v1' ], function () {
-    // Authentication routes
-    Route::post( 'Login', [ CommonController::class, 'login' ] );
-    Route::post( 'SignUpFreelancer', [ CommonController::class, 'signUpFreelancer' ] );
-    Route::post( 'SignUpFreelancerDetails', [ CommonController::class, 'signUpFreelancerDetails' ] );
-    Route::post( 'SignUpCompanyDetails', [ CommonController::class, 'signUpCompanyDetails' ] );
+// Public Routes
+Route::prefix('v1')->group(function () {
 
-    // Visitor logging (public access for tracking)
-    Route::post( 'LogVisitor', [ CommonController::class, 'logVisitor' ] );
+    Route::controller(CommonController::class)->group(function () {
+        Route::post('Login', 'login')->name('api.login');
+        Route::post('SignUpFreelancer', 'signUpFreelancer')->name('api.signup.freelancer');
+        Route::post('SignUpFreelancerDetails', 'signUpFreelancerDetails')->name('api.signup.freelancer.details');
+        Route::post('SignUpCompanyDetails', 'signUpCompanyDetails')->name('api.signup.company.details');
+    });
 
-    // LinkedIn OAuth callback
-    Route::get( 'api/auth/linkedin/callback/signup', [ CommonController::class, 'linkedInCallback' ] );
-} );
+    Route::post('LogVisitor', [CommonController::class, 'logVisitor'])->name('api.visitor.log');
+    Route::get('api/auth/linkedin/callback/signup', [CommonController::class, 'linkedInCallback'])->name('api.oauth.linkedin.callback');
+});
 
-// Protected routes (authentication required)
-Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'auth:api' ] ], function () {
+// Protected Routes
+Route::prefix('v1')->middleware(['auth:api'])->group(function () {
 
-    // Common routes
-    Route::get( 'GetMenusByRoleId', [ CommonController::class, 'getMenusByRoleId' ] );
-    Route::get( 'Notifications', [ CommonController::class, 'notifications' ] );
-    Route::post( 'UpdateNotification', [ CommonController::class, 'updateNotification' ] );
-    Route::get( 'DropdownDataByCategory', [ CommonController::class, 'dropdownDataByCategory' ] );
-    Route::post( 'logout', [ CommonController::class, 'logout' ] );
-    Route::get( 'me', [ CommonController::class, 'me' ] );
+    Route::controller(CommonController::class)->group(function () {
+        Route::get('me', 'me')->name('api.user.profile');
+        Route::post('logout', 'logout')->name('api.logout');
+        Route::get('GetMenusByRoleId', 'getMenusByRoleId')->name('api.menus.role');
+        Route::get('Notifications', 'notifications')->name('api.notifications.index');
+        Route::post('UpdateNotification', 'updateNotification')->name('api.notifications.update');
+        Route::get('DropdownDataByCategory', 'dropdownDataByCategory')->name('api.dropdown.category');
+    });
 
-    // Company routes
-    Route::group( [ 'prefix' => 'company' ], function () {
-        Route::get( 'CurrentProjectList', [ CompanyHomeController::class, 'currentProjectList' ] );
-        Route::get( 'ActiveFreelancerList', [ CompanyHomeController::class, 'activeFreelancerList' ] );
-        Route::get( 'CompanyPendingTimesheetList', [ CompanyHomeController::class, 'companyPendingTimesheetList' ] );
-        Route::get( 'NotificationList', [ CompanyHomeController::class, 'notificationList' ] );
-        Route::get( 'DashboardStats', [ CompanyHomeController::class, 'dashboardStats' ] );
-        Route::get( 'UpdateProfileList', [ CompanyHomeController::class, 'updateProfileList' ] );
-        Route::post( 'CreateProfileServices', [ CompanyHomeController::class, 'createProfileServices' ] );
-    } );
+    Route::prefix('company')->name('api.company.')->group(function () {
+        Route::controller(CompanyHomeController::class)->group(function () {
+            Route::get('DashboardStats', 'dashboardStats')->name('dashboard.stats');
+            Route::get('CurrentProjectList', 'currentProjectList')->name('projects.current');
+            Route::get('ActiveFreelancerList', 'activeFreelancerList')->name('freelancers.active');
+            Route::get('CompanyPendingTimesheetList', 'companyPendingTimesheetList')->name('timesheets.pending');
+            Route::get('NotificationList', 'notificationList')->name('notifications.list');
+            Route::get('UpdateProfileList', 'updateProfileList')->name('profile.list');
+            Route::post('CreateProfileServices', 'createProfileServices')->name('profile.services.create');
+        });
+    });
 
-    // Freelancer routes
-    Route::group( [ 'prefix' => 'freelancer' ], function () {
-        Route::get( 'UserList', [ FreelancerHomeController::class, 'userList' ] );
-    } );
+    Route::prefix('freelancer')->name('api.freelancer.')->group(function () {
+        Route::controller(FreelancerHomeController::class)->group(function () {
+            Route::get('UserList', 'userList')->name('users.list');
+        });
+    });
 
-    // Admin routes
-    Route::group( [ 'prefix' => 'admin' ], function () {
-        Route::get( 'VerifiedUserList', [ UserManagementController::class, 'verifiedUserList' ] );
-        Route::get( 'PendingVerificationList', [ UserManagementController::class, 'pendingVerificationList' ] );
-        Route::get( 'SuspendedAccountsList', [ UserManagementController::class, 'suspendedAccountsList' ] );
-        Route::post( 'UpdateUserStatus', [ UserManagementController::class, 'updateUserStatus' ] );
-        Route::post( 'VerifyUser', [ UserManagementController::class, 'verifyUser' ] );
-        Route::get( 'GetUserDetails', [ UserManagementController::class, 'getUserDetails' ] );
+    Route::prefix('admin')->name('api.admin.')->group(function () {
 
-        //CONTRACTS API
-        Route::get( 'contracts/stats', [ ContractManagementController::class, 'statistics' ] );
-        Route::get( 'contracts', [ ContractManagementController::class, 'index' ] );
-        Route::post( 'contracts', [ ContractManagementController::class, 'store' ] );
-        Route::get( 'contracts/{id}', [ ContractManagementController::class, 'show' ] );
-        Route::put( 'contracts/{id}', [ ContractManagementController::class, 'update' ] );
-        Route::patch( 'contracts/{id}', [ ContractManagementController::class, 'update' ] );
-        Route::delete( 'contracts/{id}', [ ContractManagementController::class, 'destroy' ] );
-        // Timesheet Statistics
-        Route::get( 'timesheets/stats', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'statistics'
-        ] );
+        Route::controller(UserManagementController::class)->prefix('users')->name('users.')->group(function () {
+            Route::get('verified', 'verifiedUserList')->name('verified');
+            Route::get('pending-verification', 'pendingVerificationList')->name('pending');
+            Route::get('suspended', 'suspendedAccountsList')->name('suspended');
+            Route::get('details', 'getUserDetails')->name('details');
+            Route::post('update-status', 'updateUserStatus')->name('status.update');
+            Route::post('verify', 'verifyUser')->name('verify');
+        });
 
-        // Pending Timesheets
-        Route::get( 'timesheets/pending', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'pendingTimesheets'
-        ] );
+        Route::controller(ContractManagementController::class)->prefix('contracts')->name('contracts.')->group(function () {
+            Route::get('stats', 'statistics')->name('stats');
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}', 'show')->name('show');
+            Route::match(['put', 'patch'], '/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+        });
 
-        // Approved Timesheets - ADD THIS LINE
-        Route::get( 'timesheets/approved', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'approvedTimesheets'
-        ] );
-        // Timesheet CRUD Operations
-        Route::get( 'timesheets', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'index' ] );
-        Route::post( 'timesheets', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'store' ] );
-        Route::get( 'timesheets/{id}', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'show' ] );
-        Route::put( 'timesheets/{id}', [ App\Http\Controllers\Admin\TimesheetManagementController::class, 'update' ] );
-        Route::patch( 'timesheets/{id}', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'update'
-        ] );
-        Route::delete( 'timesheets/{id}', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'destroy'
-        ] );
+        Route::controller(TimesheetManagementController::class)->prefix('timesheets')->name('timesheets.')->group(function () {
+            Route::get('stats', 'statistics')->name('stats');
+            Route::get('pending', 'pendingTimesheets')->name('pending');
+            Route::get('approved', 'approvedTimesheets')->name('approved');
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}', 'show')->name('show');
+            Route::get('/{id}/details', 'getTimesheetDetails')->name('details');
+            Route::match(['put', 'patch'], '/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/approve', 'approve')->name('approve');
+            Route::post('/{id}/reject', 'reject')->name('reject');
+        });
+    });
+});
 
-        // Timesheet Approval Actions
-        Route::post( 'timesheets/{id}/approve', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'approve'
-        ] );
-        Route::post( 'timesheets/{id}/reject', [
-            App\Http\Controllers\Admin\TimesheetManagementController::class,
-            'reject'
-        ] );
-
-    } );
-} );
-
-// Fallback route for API
-Route::fallback( function () {
-    return response()->json( [
+Route::fallback(function () {
+    return response()->json([
         'StatusCode' => 404,
-        'Message'    => 'API endpoint not found',
-        'Success'    => false
-    ], 404 );
-} );
+        'Message'    => 'API endpoint not found. Please check the URL and try again.',
+        'Success'    => false,
+        'Timestamp'  => now()->toIso8601String(),
+    ], 404);
+});

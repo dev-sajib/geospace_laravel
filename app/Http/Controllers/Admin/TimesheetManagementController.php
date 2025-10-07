@@ -752,4 +752,63 @@ class TimesheetManagementController extends Controller
             ], 500);
         }
     }
+    /**
+     * Get timesheet details with days for PDF generation
+     * GET /api/v1/admin/timesheets/{id}/details
+     */
+    public function getTimesheetDetails($id)
+    {
+        try {
+            // Get timesheet with all related information
+            $timesheet = DB::table('timesheets as t')
+                           ->leftJoin('contracts as c', 't.contract_id', '=', 'c.contract_id')
+                           ->leftJoin('projects as p', 't.project_id', '=', 'p.project_id')
+                           ->leftJoin('users as u', 't.freelancer_id', '=', 'u.user_id')
+                           ->leftJoin('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                           ->leftJoin('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                           ->leftJoin('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
+                           ->select(
+                               't.*',
+                               'c.contract_title',
+                               'c.hourly_rate as contract_hourly_rate',
+                               'p.project_title',
+                               'cd.company_name',
+                               'cd.logo as company_logo',
+                               DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name"),
+                               'u.email as freelancer_email',
+                               'ts.status_name as status_display_name'
+                           )
+                           ->where('t.timesheet_id', $id)
+                           ->first();
+
+            if (!$timesheet) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Timesheet not found'
+                ], 404);
+            }
+
+            // Get timesheet days
+            $days = DB::table('timesheet_days')
+                      ->where('timesheet_id', $id)
+                      ->orderBy('day_number')
+                      ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Timesheet details retrieved successfully',
+                'data' => [
+                    'timesheet' => $timesheet,
+                    'days' => $days
+                ]
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve timesheet details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
