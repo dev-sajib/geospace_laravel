@@ -3,100 +3,88 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CommonController;
-use App\Http\Controllers\Company\HomeController as CompanyHomeController;
-use App\Http\Controllers\Freelancer\HomeController as FreelancerHomeController;
-use App\Http\Controllers\Admin\UserManagementController;
-use App\Http\Controllers\Admin\ContractManagementController;
-use App\Http\Controllers\Admin\TimesheetManagementController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes - Version 1
 |--------------------------------------------------------------------------
-| All routes are prefixed with /api/v1
+|
+| Base URL: /api/v1
 | Authentication: JWT via 'auth:api' middleware
+|
+| Route Structure:
+| - Public routes (login, signup, visitor logging)
+| - Common protected routes (me, logout, notifications)
+| - Role-based routes (included from separate files)
+|
 */
 
-// Public Routes
+// PUBLIC ROUTES (No Authentication Required)
 Route::prefix('v1')->group(function () {
 
     Route::controller(CommonController::class)->group(function () {
+        // Authentication
         Route::post('Login', 'login')->name('api.login');
+
+        // Registration
         Route::post('SignUpFreelancer', 'signUpFreelancer')->name('api.signup.freelancer');
         Route::post('SignUpFreelancerDetails', 'signUpFreelancerDetails')->name('api.signup.freelancer.details');
         Route::post('SignUpCompanyDetails', 'signUpCompanyDetails')->name('api.signup.company.details');
+
+        // OAuth Callbacks
+        Route::get('auth/linkedin/callback/signup', 'linkedInCallback')->name('api.oauth.linkedin.callback');
     });
 
+    // Visitor Logging (Public)
     Route::post('LogVisitor', [CommonController::class, 'logVisitor'])->name('api.visitor.log');
-    Route::get('api/auth/linkedin/callback/signup', [CommonController::class, 'linkedInCallback'])->name('api.oauth.linkedin.callback');
 });
 
-// Protected Routes
+
+// PROTECTED ROUTES (Authentication Required)
 Route::prefix('v1')->middleware(['auth:api'])->group(function () {
 
+    // COMMON ROUTES (All Authenticated Users)
     Route::controller(CommonController::class)->group(function () {
+        // User Profile & Auth
         Route::get('me', 'me')->name('api.user.profile');
         Route::post('logout', 'logout')->name('api.logout');
+
+        // Menu & Navigation
         Route::get('GetMenusByRoleId', 'getMenusByRoleId')->name('api.menus.role');
+
+        // Notifications
         Route::get('Notifications', 'notifications')->name('api.notifications.index');
         Route::post('UpdateNotification', 'updateNotification')->name('api.notifications.update');
+
+        // Dropdown Data
         Route::get('DropdownDataByCategory', 'dropdownDataByCategory')->name('api.dropdown.category');
     });
 
-    Route::prefix('company')->name('api.company.')->group(function () {
-        Route::controller(CompanyHomeController::class)->group(function () {
-            Route::get('DashboardStats', 'dashboardStats')->name('dashboard.stats');
-            Route::get('CurrentProjectList', 'currentProjectList')->name('projects.current');
-            Route::get('ActiveFreelancerList', 'activeFreelancerList')->name('freelancers.active');
-            Route::get('CompanyPendingTimesheetList', 'companyPendingTimesheetList')->name('timesheets.pending');
-            Route::get('NotificationList', 'notificationList')->name('notifications.list');
-            Route::get('UpdateProfileList', 'updateProfileList')->name('profile.list');
-            Route::post('CreateProfileServices', 'createProfileServices')->name('profile.services.create');
-        });
-    });
+    // ROLE-BASED ROUTES (Included from separate files)
 
-    Route::prefix('freelancer')->name('api.freelancer.')->group(function () {
-        Route::controller(FreelancerHomeController::class)->group(function () {
-            Route::get('UserList', 'userList')->name('users.list');
-        });
-    });
+    /*
+     * Include Freelancer Routes
+     * File: routes/api/freelancer_routes.php
+     * Prefix: /api/v1/freelancer
+     */
+    require __DIR__ . '/api/freelancer_routes.php';
 
-    Route::prefix('admin')->name('api.admin.')->group(function () {
+    /*
+     * Include Company Routes
+     * File: routes/api/company_routes.php
+     * Prefix: /api/v1/company
+     */
+    require __DIR__ . '/api/company_routes.php';
 
-        Route::controller(UserManagementController::class)->prefix('users')->name('users.')->group(function () {
-            Route::get('verified', 'verifiedUserList')->name('verified');
-            Route::get('pending-verification', 'pendingVerificationList')->name('pending');
-            Route::get('suspended', 'suspendedAccountsList')->name('suspended');
-            Route::get('details', 'getUserDetails')->name('details');
-            Route::post('update-status', 'updateUserStatus')->name('status.update');
-            Route::post('verify', 'verifyUser')->name('verify');
-        });
-
-        Route::controller(ContractManagementController::class)->prefix('contracts')->name('contracts.')->group(function () {
-            Route::get('stats', 'statistics')->name('stats');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::get('/{id}', 'show')->name('show');
-            Route::match(['put', 'patch'], '/{id}', 'update')->name('update');
-            Route::delete('/{id}', 'destroy')->name('destroy');
-        });
-
-        Route::controller(TimesheetManagementController::class)->prefix('timesheets')->name('timesheets.')->group(function () {
-            Route::get('stats', 'statistics')->name('stats');
-            Route::get('pending', 'pendingTimesheets')->name('pending');
-            Route::get('approved', 'approvedTimesheets')->name('approved');
-            Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
-            Route::get('/{id}', 'show')->name('show');
-            Route::get('/{id}/details', 'getTimesheetDetails')->name('details');
-            Route::match(['put', 'patch'], '/{id}', 'update')->name('update');
-            Route::delete('/{id}', 'destroy')->name('destroy');
-            Route::post('/{id}/approve', 'approve')->name('approve');
-            Route::post('/{id}/reject', 'reject')->name('reject');
-        });
-    });
+    /*
+     * Include Admin Routes
+     * File: routes/api/admin_routes.php
+     * Prefix: /api/v1/admin
+     */
+    require __DIR__ . '/api/admin_routes.php';
 });
 
+// FALLBACK ROUTE (404 Handler)
 Route::fallback(function () {
     return response()->json([
         'StatusCode' => 404,
