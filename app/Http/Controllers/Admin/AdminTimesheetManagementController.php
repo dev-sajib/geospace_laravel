@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 
-class TimesheetManagementController extends Controller
+class AdminTimesheetManagementController extends Controller
 {
     /**
      * Get all timesheets (admin view)

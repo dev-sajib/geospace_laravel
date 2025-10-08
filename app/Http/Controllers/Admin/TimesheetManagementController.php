@@ -39,7 +39,7 @@ class TimesheetManagementController extends Controller
                            'ts.status_name',
                            'ts.status_description',
                            DB::raw("CONCAT(approver_details.first_name, ' ', approver_details.last_name) as approved_by_name"),
-                           DB::raw("(t.work_hours * c.hourly_rate) as calculated_amount")
+                           DB::raw("(t.total_hours * c.hourly_rate) as calculated_amount")
                        );
 
             $timesheets = $query->get();
@@ -100,7 +100,7 @@ class TimesheetManagementController extends Controller
                                'ts.status_description',
                                DB::raw("CONCAT(approver_details.first_name, ' ', approver_details.last_name) as approved_by_name"),
                                'approver.email as approver_email',
-                               DB::raw("(t.work_hours * c.hourly_rate) as calculated_amount")
+                               DB::raw("(t.total_hours * c.hourly_rate) as calculated_amount")
                            )
                            ->where('t.timesheet_id', $id)
                            ->first();
@@ -662,7 +662,7 @@ class TimesheetManagementController extends Controller
                            'u.email as freelancer_email',
                            DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name"),
                            'ud.profile_image as freelancer_image',
-                           DB::raw("(t.work_hours * c.hourly_rate) as calculated_amount")
+                           DB::raw("(t.total_hours * c.hourly_rate) as calculated_amount")
                        )
                        ->where('t.status_id', 1); // Pending status
 

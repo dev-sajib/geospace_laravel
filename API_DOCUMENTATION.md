@@ -960,381 +960,793 @@ Verify a user account.
 ```
 
 ---
+# Timesheet API - Request/Response Examples
 
-## Timesheet Management Endpoints
-
-Comprehensive timesheet management for tracking work hours and approvals.
+## Authentication
+All endpoints require Bearer token in header:
+```
+Authorization: Bearer {your_token_here}
+```
 
 ---
 
-### 24. Get All Timesheets
+## FREELANCER ENDPOINTS
 
-Retrieve a paginated list of all timesheets with filters.
+### 1. List Freelancer Timesheets
+**GET** `/api/v1/freelancer/timesheets?status=Pending`
 
-**Endpoint:** `GET /admin/timesheets`
-
-**Query Parameters:**
-- `per_page` (optional, default: 15) - Records per page
-- `status_id` (optional) - Filter by status (1=Pending, 2=Approved, 3=Rejected)
-- `contract_id` (optional) - Filter by contract ID
-- `user_id` (optional) - Filter by freelancer user ID
-- `start_date` (optional, format: YYYY-MM-DD) - Filter from date
-- `end_date` (optional, format: YYYY-MM-DD) - Filter to date
-
-**Success Response (200):**
+**Response:**
 ```json
 {
-  "success": true,
-  "message": "Timesheets retrieved successfully",
-  "data": {
-    "current_page": 1,
-    "data": [
-      {
+    "success": true,
+    "message": "Timesheets retrieved successfully",
+    "data": {
+        "current_page": 1,
+        "data": [
+            {
+                "timesheet_id": 1,
+                "project_title": "Website Redesign",
+                "company_name": "Tech Corp",
+                "start_date": "2025-10-01",
+                "end_date": "2025-10-07",
+                "total_hours": 35.5,
+                "total_amount": 1775.00,
+                "status_name": "Pending",
+                "submitted_at": "2025-10-08 10:30:00"
+            }
+        ],
+        "total": 1
+    }
+}
+```
+
+### 2. Get Dropdown Data
+**GET** `/api/v1/freelancer/timesheets/dropdown-data`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Dropdown data retrieved successfully",
+    "data": {
+        "contracts": [
+            {
+                "contract_id": 1,
+                "project_id": 1,
+                "company_id": 1,
+                "project_title": "Website Redesign",
+                "company_name": "Tech Corp",
+                "hourly_rate": 50.00
+            }
+        ],
+        "freelancer_hourly_rate": 50.00
+    }
+}
+```
+
+### 3. Create and Submit Timesheet
+**POST** `/api/v1/freelancer/timesheets`
+
+**Request Body:**
+```json
+{
+    "contract_id": 1,
+    "company_id": 1,
+    "project_id": 1,
+    "start_date": "2025-10-01",
+    "end_date": "2025-10-07",
+    "days": [
+        {
+            "work_date": "2025-10-01",
+            "day_name": "Monday",
+            "hours_worked": 8.0,
+            "task_description": "Initial design wireframes"
+        },
+        {
+            "work_date": "2025-10-02",
+            "day_name": "Tuesday",
+            "hours_worked": 7.5,
+            "task_description": "Client meeting and revisions"
+        },
+        {
+            "work_date": "2025-10-03",
+            "day_name": "Wednesday",
+            "hours_worked": 8.0,
+            "task_description": "Component development"
+        },
+        {
+            "work_date": "2025-10-04",
+            "day_name": "Thursday",
+            "hours_worked": 6.5,
+            "task_description": "Testing and bug fixes"
+        },
+        {
+            "work_date": "2025-10-05",
+            "day_name": "Friday",
+            "hours_worked": 5.5,
+            "task_description": "Documentation"
+        },
+        {
+            "work_date": "2025-10-06",
+            "day_name": "Saturday",
+            "hours_worked": 0,
+            "task_description": "Day off"
+        },
+        {
+            "work_date": "2025-10-07",
+            "day_name": "Sunday",
+            "hours_worked": 0,
+            "task_description": "Day off"
+        }
+    ]
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheet created and submitted successfully",
+    "data": {
         "timesheet_id": 1,
-        "contract_id": 5,
-        "user_id": 10,
-        "work_date": "2024-10-01",
-        "day_of_week": "Tuesday",
-        "work_hours": 8.00,
-        "task_description": "Geological survey and mapping",
-        "status_id": 1,
-        "status_display_name": "Pending",
-        "submitted_at": "2024-10-01T18:00:00",
-        "contract_title": "Northern Ontario Survey",
-        "contract_hourly_rate": 85.00,
-        "project_title": "Geological Survey Project",
-        "company_name": "Mining Solutions Inc.",
-        "freelancer_name": "John Smith",
-        "freelancer_email": "freelancer@geospace.com",
-        "calculated_amount": 680.00
-      }
-    ],
-    "per_page": 15,
-    "total": 25,
-    "last_page": 2
-  }
+        "project_title": "Website Redesign",
+        "company_name": "Tech Corp",
+        "start_date": "2025-10-01",
+        "end_date": "2025-10-07",
+        "total_hours": 35.5,
+        "total_amount": 1775.00,
+        "status_name": "Pending"
+    }
 }
 ```
 
-**cURL Example:**
-```bash
-curl -X GET "http://localhost:8000/api/v1/admin/timesheets?status_id=1&per_page=20" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+### 4. View Timesheet Details
+**GET** `/api/v1/freelancer/timesheets/1`
 
----
-
-### 25. Get Timesheet Details
-
-Retrieve detailed information about a specific timesheet.
-
-**Endpoint:** `GET /admin/timesheets/{id}`
-
-**URL Parameters:**
-- `id` (required) - Timesheet ID
-
-**Success Response (200):**
+**Response:**
 ```json
 {
-  "success": true,
-  "message": "Timesheet retrieved successfully",
-  "data": {
-    "timesheet": {
-      "timesheet_id": 1,
-      "contract_id": 5,
-      "user_id": 10,
-      "work_date": "2024-10-01",
-      "work_hours": 8.00,
-      "task_description": "Geological survey and mapping",
-      "status_name": "Pending",
-      "approved_at": null,
-      "approved_by": null,
-      "rejected_reason": null,
-      "contract_title": "Northern Ontario Survey",
-      "project_title": "Geological Survey Project",
-      "company_name": "Mining Solutions Inc.",
-      "freelancer_name": "John Smith",
-      "calculated_amount": 680.00
-    },
-    "payments": [],
-    "history": []
-  }
+    "success": true,
+    "message": "Timesheet retrieved successfully",
+    "data": {
+        "timesheet": {
+            "timesheet_id": 1,
+            "project_title": "Website Redesign",
+            "company_name": "Tech Corp",
+            "start_date": "2025-10-01",
+            "end_date": "2025-10-07",
+            "total_hours": 35.5,
+            "hourly_rate": 50.00,
+            "total_amount": 1775.00,
+            "status_name": "Pending"
+        },
+        "days": [
+            {
+                "day_id": 1,
+                "work_date": "2025-10-01",
+                "day_name": "Monday",
+                "day_number": 1,
+                "hours_worked": 8.0,
+                "task_description": "Initial design wireframes",
+                "comments": [
+                    {
+                        "comment_id": 1,
+                        "comment_type": "Company",
+                        "comment_text": "Please provide more details on the design approach",
+                        "commenter_name": "John Smith",
+                        "created_at": "2025-10-08 14:30:00"
+                    }
+                ]
+            }
+        ]
+    }
 }
 ```
 
-**Error Response (404):**
-```json
-{
-  "success": false,
-  "message": "Timesheet not found"
-}
-```
-
----
-
-### 26. Create Timesheet
-
-Create a new timesheet entry.
-
-**Endpoint:** `POST /admin/timesheets`
+### 5. Resubmit Rejected Timesheet
+**PUT** `/api/v1/freelancer/timesheets/1/resubmit`
 
 **Request Body:**
 ```json
 {
-  "contract_id": 5,
-  "user_id": 10,
-  "work_date": "2024-10-08",
-  "work_hours": 8.5,
-  "task_description": "Site inspection and sample collection from Zone A"
+    "days": [
+        {
+            "day_id": 1,
+            "hours_worked": 7.5,
+            "task_description": "Initial design wireframes with detailed approach document",
+            "freelancer_comment": "Added detailed design approach as requested"
+        },
+        {
+            "day_id": 2,
+            "hours_worked": 7.5,
+            "task_description": "Client meeting and revisions"
+        }
+    ]
 }
 ```
 
-**Success Response (201):**
+**Response:**
 ```json
 {
-  "success": true,
-  "message": "Timesheet created successfully",
-  "data": {
-    "timesheet_id": 25,
-    "contract_id": 5,
-    "user_id": 10,
-    "work_date": "2024-10-08",
-    "work_hours": 8.5,
-    "status_id": 1,
-    "created_at": "2024-10-08T10:30:00"
-  }
+    "success": true,
+    "message": "Timesheet resubmitted successfully"
 }
 ```
 
-**Validation Error (422):**
+### 6. Request Payment
+**POST** `/api/v1/freelancer/timesheets/1/request-payment`
+
+**Response:**
 ```json
 {
-  "success": false,
-  "message": "Validation failed",
-  "errors": {
-    "work_hours": ["Work hours cannot exceed 24 hours"],
-    "work_date": ["Cannot submit timesheet for future dates"]
-  }
+    "success": true,
+    "message": "Payment request submitted successfully"
 }
 ```
 
-**cURL Example:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/admin/timesheets" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "contract_id": 5,
-    "user_id": 10,
-    "work_date": "2024-10-08",
-    "work_hours": 8,
-    "task_description": "Geological survey work"
-  }'
+### 7. Payment History
+**GET** `/api/v1/freelancer/timesheets/payment-history`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Payment history retrieved successfully",
+    "data": {
+        "payments": {
+            "data": [
+                {
+                    "payment_id": 1,
+                    "invoice_number": "INV-20251008-000001",
+                    "project_title": "Website Redesign",
+                    "company_name": "Tech Corp",
+                    "amount": 1775.00,
+                    "status": "Completed",
+                    "transaction_id": "TXN123456",
+                    "paid_at": "2025-10-15 16:00:00"
+                }
+            ]
+        },
+        "total_earnings": {
+            "total_earned": 15000.00,
+            "total_paid": 14500.00,
+            "pending_amount": 500.00
+        }
+    }
+}
 ```
 
 ---
 
-### 27. Update Timesheet
+## COMPANY ENDPOINTS
 
-Update an existing timesheet (only if not approved).
+### 1. List Company Timesheets
+**GET** `/api/v1/company/timesheets?status=Pending`
 
-**Endpoint:** `PUT /admin/timesheets/{id}`
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheets retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "timesheet_id": 1,
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "freelancer_email": "jane@example.com",
+                "start_date": "2025-10-01",
+                "end_date": "2025-10-07",
+                "total_hours": 35.5,
+                "total_amount": 1775.00,
+                "status_name": "Pending",
+                "submitted_at": "2025-10-08 10:30:00"
+            }
+        ]
+    }
+}
+```
 
-**URL Parameters:**
-- `id` (required) - Timesheet ID
+### 2. Pending Timesheets
+**GET** `/api/v1/company/timesheets/pending`
+
+**Response:** Same as above, filtered to Pending only
+
+### 3. Accepted Timesheets
+**GET** `/api/v1/company/timesheets/accepted`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Accepted timesheets retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "timesheet_id": 1,
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "status_name": "Accepted",
+                "invoice_id": 1,
+                "invoice_number": "INV-20251008-000001",
+                "invoice_status": "Generated",
+                "due_date": "2025-11-08"
+            }
+        ]
+    }
+}
+```
+
+### 4. View Timesheet Details
+**GET** `/api/v1/company/timesheets/1`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheet retrieved successfully",
+    "data": {
+        "timesheet": {
+            "timesheet_id": 1,
+            "project_title": "Website Redesign",
+            "freelancer_name": "Jane Doe",
+            "freelancer_email": "jane@example.com",
+            "freelancer_phone": "+1234567890",
+            "start_date": "2025-10-01",
+            "end_date": "2025-10-07",
+            "total_hours": 35.5,
+            "hourly_rate": 50.00,
+            "total_amount": 1775.00,
+            "status_name": "Pending"
+        },
+        "days": [
+            {
+                "day_id": 1,
+                "work_date": "2025-10-01",
+                "day_name": "Monday",
+                "hours_worked": 8.0,
+                "task_description": "Initial design wireframes",
+                "comments": []
+            }
+        ]
+    }
+}
+```
+
+### 5. Add Comment to Day
+**POST** `/api/v1/company/timesheets/1/days/1/comment`
 
 **Request Body:**
 ```json
 {
-  "work_hours": 9.0,
-  "task_description": "Updated: Geological survey, mapping, and analysis"
+    "comment_text": "Please provide more details on the design approach"
 }
 ```
 
-**Success Response (200):**
+**Response:**
 ```json
 {
-  "success": true,
-  "message": "Timesheet updated successfully",
-  "data": {
-    "timesheet_id": 25,
-    "work_hours": 9.0,
-    "task_description": "Updated: Geological survey, mapping, and analysis"
-  }
+    "success": true,
+    "message": "Comment added successfully",
+    "data": {
+        "comment_id": 1,
+        "comment_type": "Company",
+        "comment_text": "Please provide more details on the design approach",
+        "commenter_name": "John Smith",
+        "created_at": "2025-10-08 14:30:00"
+    }
 }
 ```
 
-**Error Response (400):**
+### 6. Accept Timesheet
+**POST** `/api/v1/company/timesheets/1/accept`
+
+**Response:**
 ```json
 {
-  "success": false,
-  "message": "Cannot update approved timesheet"
+    "success": true,
+    "message": "Timesheet accepted and invoice generated",
+    "data": {
+        "timesheet_id": 1,
+        "invoice_id": 1,
+        "invoice_number": "INV-20251008-000001"
+    }
 }
 ```
 
----
-
-### 28. Delete Timesheet
-
-Delete a timesheet (only if not approved and has no payments).
-
-**Endpoint:** `DELETE /admin/timesheets/{id}`
-
-**URL Parameters:**
-- `id` (required) - Timesheet ID
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Timesheet deleted successfully"
-}
-```
-
-**Error Response (400):**
-```json
-{
-  "success": false,
-  "message": "Cannot delete timesheet with associated payments"
-}
-```
-
----
-
-### 29. Approve Timesheet
-
-Approve a pending timesheet and create payment record.
-
-**Endpoint:** `POST /admin/timesheets/{id}/approve`
-
-**URL Parameters:**
-- `id` (required) - Timesheet ID
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Timesheet approved successfully",
-  "data": {
-    "timesheet_id": 25,
-    "status": "Approved",
-    "approved_at": "2024-10-08T14:30:00",
-    "payment_created": true,
-    "payment_amount": 680.00
-  }
-}
-```
-
-**Error Response (400):**
-```json
-{
-  "success": false,
-  "message": "Timesheet is already approved"
-}
-```
-
-**cURL Example:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/admin/timesheets/25/approve" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
----
-
-### 30. Reject Timesheet
-
-Reject a timesheet with a reason.
-
-**Endpoint:** `POST /admin/timesheets/{id}/reject`
-
-**URL Parameters:**
-- `id` (required) - Timesheet ID
+### 7. Reject Timesheet
+**POST** `/api/v1/company/timesheets/1/reject`
 
 **Request Body:**
 ```json
 {
-  "rejected_reason": "Please provide more detailed task description"
+    "rejection_reason": "Hours seem excessive for the described tasks. Please review."
 }
 ```
 
-**Success Response (200):**
+**Response:**
 ```json
 {
-  "success": true,
-  "message": "Timesheet rejected successfully",
-  "data": {
-    "timesheet_id": 25,
-    "status": "Rejected",
-    "rejected_at": "2024-10-08T14:35:00",
-    "rejected_reason": "Please provide more detailed task description"
-  }
+    "success": true,
+    "message": "Timesheet rejected successfully"
 }
 ```
 
-**cURL Example:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/admin/timesheets/25/reject" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rejected_reason": "Please provide more detailed task description"
-  }'
-```
+### 8. Complete Payment
+**POST** `/api/v1/company/invoices/1/complete-payment`
 
----
-
-### 31. Get Pending Timesheets
-
-Get all timesheets awaiting approval.
-
-**Endpoint:** `GET /admin/timesheets/pending`
-
-**Query Parameters:**
-- `per_page` (optional, default: 15) - Records per page
-- `company_id` (optional) - Filter by company ID
-
-**Success Response (200):**
+**Request Body:**
 ```json
 {
-  "success": true,
-  "message": "Pending timesheets retrieved successfully",
-  "data": {
-    "current_page": 1,
-    "data": [
-      {
-        "timesheet_id": 24,
-        "contract_id": 8,
-        "user_id": 15,
-        "work_date": "2024-10-04",
-        "work_hours": 8.00,
-        "task_description": "Backend API development",
-        "contract_title": "Mobile App Backend",
-        "hourly_rate": 60.00,
-        "project_title": "Mobile Application",
-        "company_name": "StartUp Inc",
-        "freelancer_name": "Jane Smith",
-        "calculated_amount": 480.00,
-        "submitted_at": "2024-10-04T17:00:00"
-      }
-    ],
-    "total": 8
-  }
+    "transaction_id": "TXN123456789",
+    "payment_method": "Bank Transfer"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Payment completed and submitted for verification"
+}
+```
+
+### 9. Payment History
+**GET** `/api/v1/company/payments/history`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Payment history retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "payment_id": 1,
+                "invoice_number": "INV-20251008-000001",
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "amount": 1775.00,
+                "status": "Approved",
+                "transaction_id": "TXN123456789",
+                "paid_at": "2025-10-12 10:00:00"
+            }
+        ]
+    }
 }
 ```
 
 ---
 
-## Timesheet Status Reference
+## ADMIN ENDPOINTS
 
-| Status ID | Status Name | Description |
-|-----------|-------------|-------------|
-| 1 | Pending | Awaiting approval |
-| 2 | Approved | Approved by company/admin |
-| 3 | Rejected | Rejected with reason |
-| 4 | Under Review | Being reviewed by admin |
-| 5 | Disputed | Under dispute resolution |
+### 1. List All Timesheets
+**GET** `/api/v1/admin/timesheets?status=Accepted&start_date=2025-10-01`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheets retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "timesheet_id": 1,
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "freelancer_email": "jane@example.com",
+                "company_name": "Tech Corp",
+                "start_date": "2025-10-01",
+                "end_date": "2025-10-07",
+                "total_hours": 35.5,
+                "total_amount": 1775.00,
+                "status_name": "Accepted"
+            }
+        ]
+    }
+}
+```
+
+### 2. Accepted Timesheets
+**GET** `/api/v1/admin/timesheets/accepted`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Accepted timesheets retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "timesheet_id": 1,
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "company_name": "Tech Corp",
+                "invoice_id": 1,
+                "invoice_number": "INV-20251008-000001",
+                "invoice_status": "Paid"
+            }
+        ]
+    }
+}
+```
+
+### 3. View Timesheet Details
+**GET** `/api/v1/admin/timesheets/1`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheet retrieved successfully",
+    "data": {
+        "timesheet": {
+            "timesheet_id": 1,
+            "project_title": "Website Redesign",
+            "freelancer_name": "Jane Doe",
+            "company_name": "Tech Corp",
+            "status_name": "Accepted",
+            "reviewed_by_name": "John Smith"
+        },
+        "days": [
+            {
+                "day_id": 1,
+                "work_date": "2025-10-01",
+                "hours_worked": 8.0,
+                "comments": []
+            }
+        ],
+        "invoice": {
+            "invoice_id": 1,
+            "invoice_number": "INV-20251008-000001",
+            "total_amount": 1775.00,
+            "status": "Paid"
+        },
+        "payment_requests": [],
+        "payments": []
+    }
+}
+```
+
+### 4. Payment Requests
+**GET** `/api/v1/admin/payment-requests?status=Pending`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Payment requests retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "request_id": 1,
+                "timesheet_id": 1,
+                "invoice_number": "INV-20251008-000001",
+                "project_title": "Website Redesign",
+                "freelancer_name": "Jane Doe",
+                "freelancer_email": "jane@example.com",
+                "company_name": "Tech Corp",
+                "requested_amount": 1775.00,
+                "status": "Pending",
+                "requested_at": "2025-10-13 09:00:00"
+            }
+        ]
+    }
+}
+```
+
+### 5. Process Freelancer Payment
+**POST** `/api/v1/admin/payment-requests/1/process`
+
+**Request Body:**
+```json
+{
+    "transaction_id": "TXN-FL-123456",
+    "payment_method": "Bank Transfer",
+    "payment_notes": "Payment processed via bank transfer"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Freelancer payment processed successfully"
+}
+```
+
+### 6. Company Payments for Verification
+**GET** `/api/v1/admin/payments/company-payments`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Company payments retrieved successfully",
+    "data": {
+        "data": [
+            {
+                "payment_id": 1,
+                "invoice_number": "INV-20251008-000001",
+                "timesheet_id": 1,
+                "company_name": "Tech Corp",
+                "project_title": "Website Redesign",
+                "amount": 1775.00,
+                "transaction_id": "TXN123456789",
+                "status": "Pending"
+            }
+        ]
+    }
+}
+```
+
+### 7. Verify Company Payment
+**POST** `/api/v1/admin/payments/1/verify`
+
+**Request Body:**
+```json
+{
+    "verification_notes": "Transaction verified with bank records"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Payment verified and approved successfully"
+}
+```
+
+### 8. Download Invoice
+**GET** `/api/v1/admin/invoices/1/download`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Invoice data retrieved successfully",
+    "data": {
+        "invoice": {
+            "invoice_number": "INV-20251008-000001",
+            "invoice_date": "2025-10-08",
+            "company_name": "Tech Corp",
+            "company_address": "123 Tech Street",
+            "freelancer_name": "Jane Doe",
+            "freelancer_address": "456 Freelancer Ave",
+            "project_title": "Website Redesign",
+            "total_hours": 35.5,
+            "hourly_rate": 50.00,
+            "subtotal": 1775.00,
+            "tax_amount": 0,
+            "total_amount": 1775.00
+        },
+        "days": [
+            {
+                "work_date": "2025-10-01",
+                "day_name": "Monday",
+                "hours_worked": 8.0,
+                "task_description": "Initial design wireframes"
+            }
+        ]
+    }
+}
+```
+
+### 9. Statistics
+**GET** `/api/v1/admin/timesheets/statistics?start_date=2025-10-01&end_date=2025-10-31`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Statistics retrieved successfully",
+    "data": {
+        "total_timesheets": 45,
+        "pending_timesheets": 12,
+        "accepted_timesheets": 28,
+        "rejected_timesheets": 5,
+        "total_hours": 1580.5,
+        "total_amount": 79025.00,
+        "pending_payment_requests": 8,
+        "pending_company_payments": 3
+    }
+}
+```
+
+### 10. Delete Timesheet
+**DELETE** `/api/v1/admin/timesheets/1`
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Timesheet deleted successfully"
+}
+```
 
 ---
+
+## ERROR RESPONSES
+
+### Validation Error
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "errors": {
+        "days": ["The days field is required."],
+        "start_date": ["The start date must be a valid date."]
+    }
+}
+```
+
+### Not Found
+```json
+{
+    "success": false,
+    "message": "Timesheet not found"
+}
+```
+
+### Unauthorized
+```json
+{
+    "success": false,
+    "message": "Timesheet not found or access denied"
+}
+```
+
+### Business Logic Error
+```json
+{
+    "success": false,
+    "message": "Only pending timesheets can be accepted"
+}
+```
+
+### Server Error
+```json
+{
+    "success": false,
+    "message": "Failed to create timesheet",
+    "error": "Database connection error"
+}
+```
+
+---
+
+## HTTP STATUS CODES
+
+- **200 OK** - Success
+- **201 Created** - Resource created successfully
+- **400 Bad Request** - Business logic error
+- **403 Forbidden** - Access denied
+- **404 Not Found** - Resource not found
+- **422 Unprocessable Entity** - Validation failed
+- **500 Internal Server Error** - Server error
+
+---
+
+## TESTING WORKFLOW
+
+1. **Freelancer creates timesheet** → Status: Pending
+2. **Company reviews and accepts** → Status: Accepted, Invoice auto-generated
+3. **Company marks payment complete** → Payment: Pending verification
+4. **Admin verifies company payment** → Payment: Approved
+5. **Freelancer requests payment** → Payment Request created
+6. **Admin processes freelancer payment** → Freelancer earnings updated
+
+---
+
+## POSTMAN COLLECTION
+
+You can import these examples into Postman for easier testing. Create environment variables:
+- `base_url`: http://your-api-domain.com
+- `freelancer_token`: {freelancer_auth_token}
+- `company_token`: {company_auth_token}
+- `admin_token`: {admin_auth_token}
+
 
 ## Error Handling
 
