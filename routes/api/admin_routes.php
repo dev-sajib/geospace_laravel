@@ -26,8 +26,8 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::get('pending-verification', 'pendingVerificationList')->name('pending');
         Route::get('suspended', 'suspendedAccountsList')->name('suspended');
         Route::get('details', 'getUserDetails')->name('details');
-        Route::post('update-status', 'updateUserStatus')->name('status.update');
-        Route::post('verify', 'verifyUser')->name('verify');
+        Route::post('send-verification-request', 'sendVerificationRequest')->name('send.verification');
+        Route::post('final-verification', 'finalVerification')->name('final.verification');
     });
 
     // CONTRACT MANAGEMENT

@@ -23,6 +23,7 @@ class User extends Authenticatable implements JWTSubject
         'auth_provider',
         'is_active',
         'is_verified',
+        'verification_status',
         'email_verified_at',
         'last_login'
     ];

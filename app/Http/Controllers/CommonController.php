@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use App\Models\FileUpload;
 
 class CommonController extends Controller
 {
@@ -47,10 +48,8 @@ class CommonController extends Controller
             $password = $request->input('Password');
 
             $user = User::with('role')
-                ->where('email', $email)
-                ->where('is_active', true)
-                ->first();
-
+                        ->where('email', $email)
+                        ->first();
 
             if (!$user) {
                 return response()->json(
@@ -59,9 +58,26 @@ class CommonController extends Controller
                 );
             }
 
-            // Check if password is bcrypt hash or AES encrypted
+            // Check if user is active
+            if (!$user->is_active) {
+                return response()->json([
+                    'StatusCode' => 403,
+                    'Message' => 'Your account is not active. Please check your email for activation notification.',
+                    'Success' => false
+                ], 403);
+            }
+
+            // Check if user is verified (for freelancers)
+            if ($user->role_id == 2 && $user->verification_status == 'pending') {
+                return response()->json([
+                    'StatusCode' => 403,
+                    'Message' => 'Your account is pending verification. Please check your email for updates.',
+                    'Success' => false
+                ], 403);
+            }
+
+            // Check password
             if (str_starts_with($user->password_hash, '$2b$') || str_starts_with($user->password_hash, '$2y$')) {
-                // Bcrypt password - use PHP's password_verify for better compatibility
                 if (!password_verify($password, $user->password_hash)) {
                     return response()->json(
                         MessageHelper::unauthorized('Invalid credentials'),
@@ -69,17 +85,8 @@ class CommonController extends Controller
                     );
                 }
             } else {
-                // AES encrypted password - decrypt and compare
-                try {
-                    $decryptedPassword = AesEncryptionHelper::decrypt($user->password_hash);
-
-                    if ($decryptedPassword !== $password) {
-                        return response()->json(
-                            MessageHelper::unauthorized('Invalid credentials'),
-                            401
-                        );
-                    }
-                } catch (\Exception $e) {
+                $decryptedPassword = AesEncryptionHelper::decrypt($user->password_hash);
+                if ($password !== $decryptedPassword) {
                     return response()->json(
                         MessageHelper::unauthorized('Invalid credentials'),
                         401
@@ -90,27 +97,28 @@ class CommonController extends Controller
             // Generate JWT token
             $token = JWTAuth::fromUser($user);
 
-            $userDetails = [
-                'UserId' => $user->user_id,
-                'UserName' => $user->email, // Using email as username
-                'Email' => $user->email,
-                'RoleId' => $user->role_id,
-                'RoleName' => $user->role->role_name ?? 'Unknown'
-            ];
-
-            $response = [
-                'Token' => $token,
-                'UserDetails' => $userDetails
-            ];
-
             // Update last login
-            $user->update(['last_login' => now()]);
+            $user->last_login = now();
+            $user->save();
 
-            return response()->json($response);
+            return response()->json(
+                MessageHelper::success('Login successful', [
+                    'Token' => $token,
+                    'UserDetails' => [
+                        'UserId' => $user->user_id,
+                        'Email' => $user->email,
+                        'RoleId' => $user->role_id,
+                        'RoleName' => $user->role->role_name,
+                        'IsVerified' => $user->is_verified,
+                        'VerificationStatus' => $user->verification_status
+                    ]
+                ])
+            );
 
         } catch (\Exception $e) {
+            Log::error('Login error: ' . $e->getMessage());
             return response()->json(
-                MessageHelper::error('An internal server error occurred: ' . $e->getMessage()),
+                MessageHelper::error('Login failed: ' . $e->getMessage()),
                 500
             );
         }
@@ -289,12 +297,6 @@ class CommonController extends Controller
         }
     }
 
-    /**
-     * Sign up freelancer
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function signUpFreelancer(Request $request): JsonResponse
     {
         try {
@@ -331,8 +333,11 @@ class CommonController extends Controller
 
             DB::commit();
 
+            // Return with proper structure
             return response()->json(
-                MessageHelper::success('User registered successfully', ['UserId' => $user->user_id])
+                MessageHelper::success('User registered successfully', [
+                    'UserId' => (int)$user->user_id // Ensure it's an integer
+                ])
             );
 
         } catch (\Exception $e) {
@@ -340,7 +345,7 @@ class CommonController extends Controller
 
             if (str_contains($e->getMessage(), 'Duplicate entry')) {
                 return response()->json(
-                    MessageHelper::error('Email already exists', 409),
+                    MessageHelper::error('Email already exists'),
                     409
                 );
             }
@@ -352,12 +357,6 @@ class CommonController extends Controller
         }
     }
 
-    /**
-     * Sign up freelancer details
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function signUpFreelancerDetails(Request $request): JsonResponse
     {
         try {
@@ -393,6 +392,10 @@ class CommonController extends Controller
                     'hourly_rate' => $request->input('PreferredHourlyRate') ? (float)$request->input('PreferredHourlyRate') : null
                 ]
             );
+
+            // Update user verification status to pending
+            User::where('user_id', $request->input('UserId'))
+                ->update(['verification_status' => 'pending']);
 
             DB::commit();
 
@@ -566,6 +569,95 @@ class CommonController extends Controller
         } catch (\Exception $e) {
             return response()->json(
                 MessageHelper::error('Failed to log visitor activity: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Upload file (profile image or resume)
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function uploadFile(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'file' => 'required|file|mimes:jpeg,jpg,png,pdf|max:5120', // 5MB max
+                'file_category' => 'nullable|in:Profile,Resume,Project,Invoice,Other'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(
+                    MessageHelper::validationError($validator->errors()->toArray()),
+                    422
+                );
+            }
+
+            if (!$request->hasFile('file')) {
+                return response()->json(
+                    MessageHelper::error('No file provided'),
+                    400
+                );
+            }
+
+            $file = $request->file('file');
+            $userId = auth()->user() ? auth()->id() : null;
+
+            // Determine file category based on mime type
+            $mimeType = $file->getMimeType();
+            $fileCategory = $request->input('file_category');
+
+            if (!$fileCategory) {
+                if (str_starts_with($mimeType, 'image/')) {
+                    $fileCategory = 'Profile';
+                } elseif ($mimeType === 'application/pdf') {
+                    $fileCategory = 'Resume';
+                } else {
+                    $fileCategory = 'Other';
+                }
+            }
+
+            // Generate unique filename
+            $originalFilename = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $storedFilename = time() . '_' . uniqid() . '.' . $extension;
+
+            // Determine storage path based on category
+            $uploadPath = $fileCategory === 'Profile' ? 'uploads/profiles' : 'uploads/resumes';
+
+            // Store file
+            $filePath = $file->storeAs($uploadPath, $storedFilename, 'public');
+
+            // Save to database
+            if ($userId) {
+                FileUpload::create([
+                    'user_id' => $userId,
+                    'original_filename' => $originalFilename,
+                    'stored_filename' => $storedFilename,
+                    'file_path' => $filePath,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $mimeType,
+                    'file_category' => $fileCategory
+                ]);
+            }
+
+            return response()->json(
+                MessageHelper::success('File uploaded successfully', [
+                    'filePath' => 'storage/' . $filePath,
+                    'originalName' => $originalFilename,
+                    'storedName' => $storedFilename,
+                    'fileSize' => $file->getSize(),
+                    'mimeType' => $mimeType
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('File upload failed: ' . $e->getMessage());
+
+            return response()->json(
+                MessageHelper::error('File upload failed: ' . $e->getMessage()),
                 500
             );
         }
