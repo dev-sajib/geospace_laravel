@@ -148,11 +148,11 @@ class CommonController extends Controller
 
             // Get all menus with permissions for the role
             $allMenus = DB::table('menu_items as m')
-                ->join('role_permissions as rp', 'm.menu_id', '=', 'rp.menu_id')
+                ->join('role_menu_access as rp', 'm.menu_id', '=', 'rp.menu_id')
                 ->where('rp.role_id', $roleId)
                 ->where('rp.can_view', true)
                 ->where('m.is_active', true)
-                ->select('m.*', 'rp.can_create', 'rp.can_edit', 'rp.can_delete')
+                ->select('m.*', 'rp.can_edit', 'rp.can_delete')
                 ->orderBy('m.sort_order')
                 ->get();
 

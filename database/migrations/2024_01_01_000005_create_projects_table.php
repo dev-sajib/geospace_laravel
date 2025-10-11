@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('projects', function (Blueprint $table) {
             $table->id('project_id');
             $table->unsignedBigInteger('company_id');
-            $table->string('project_name', 255);
+            $table->string('project_title', 255);
             $table->text('project_description');
             $table->string('project_category', 100)->nullable();
             $table->decimal('budget_min', 12, 2)->nullable();

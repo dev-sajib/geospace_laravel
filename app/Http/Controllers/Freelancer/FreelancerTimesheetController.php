@@ -23,15 +23,15 @@ class FreelancerTimesheetController extends Controller
             $query = DB::table('timesheets as t')
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
-                ->join('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 't.company_id', '=', 'cd.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->where('t.freelancer_id', $freelancerId)
                 ->select(
                     't.*',
-                    'p.project_title',
+                    'p.project_name as project_title',
                     'cd.company_name',
                     'ts.status_name',
-                    'c.hourly_rate'
+                    'c.contract_value as hourly_rate'
                 )
                 ->orderBy('t.created_at', 'desc');
 
@@ -69,16 +69,16 @@ class FreelancerTimesheetController extends Controller
             // Get active contracts for this freelancer
             $contracts = DB::table('contracts as c')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
-                ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 'c.company_id', '=', 'cd.user_id')
                 ->where('c.freelancer_id', $freelancerId)
                 ->where('c.status', 'Active')
                 ->select(
                     'c.contract_id',
                     'c.project_id',
                     'c.company_id',
-                    'p.project_title',
+                    'p.project_name as project_title',
                     'cd.company_name',
-                    'c.hourly_rate'
+                    'c.contract_value as hourly_rate'
                 )
                 ->get();
 
@@ -151,12 +151,12 @@ class FreelancerTimesheetController extends Controller
 
             // Calculate total hours
             $totalHours = array_sum(array_column($request->days, 'hours_worked'));
-            $hourlyRate = $contract->hourly_rate;
+            $hourlyRate = $contract->contract_value;
             $totalAmount = $totalHours * $hourlyRate;
 
-            // Get pending status
-            $pendingStatus = DB::table('timesheet_status')
-                ->where('status_name', 'Pending')
+            // Get submitted status
+            $submittedStatus = DB::table('timesheet_status')
+                ->where('status_name', 'Submitted')
                 ->first();
 
             // Create main timesheet record
@@ -167,8 +167,7 @@ class FreelancerTimesheetController extends Controller
                 'project_id' => $request->project_id,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
-                'status_id' => $pendingStatus->status_id,
-                'status_display_name' => $pendingStatus->status_name,
+                'status_id' => $submittedStatus->status_id,
                 'total_hours' => $totalHours,
                 'hourly_rate' => $hourlyRate,
                 'total_amount' => $totalAmount,
@@ -193,7 +192,7 @@ class FreelancerTimesheetController extends Controller
 
             // Create notification for company
             $companyUser = DB::table('company_details')
-                ->where('company_id', $request->company_id)
+                ->where('user_id', $request->company_id)
                 ->value('user_id');
 
             DB::table('notifications')->insert([
@@ -223,9 +222,9 @@ class FreelancerTimesheetController extends Controller
             // Get created timesheet with details
             $timesheet = DB::table('timesheets as t')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
-                ->join('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 't.company_id', '=', 'cd.user_id')
                 ->where('t.timesheet_id', $timesheetId)
-                ->select('t.*', 'p.project_title', 'cd.company_name')
+                ->select('t.*', 'p.project_name as project_title', 'cd.company_name')
                 ->first();
 
             return response()->json([
@@ -257,16 +256,16 @@ class FreelancerTimesheetController extends Controller
             $timesheet = DB::table('timesheets as t')
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
-                ->join('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 't.company_id', '=', 'cd.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->where('t.timesheet_id', $id)
                 ->where('t.freelancer_id', $freelancerId)
                 ->select(
                     't.*',
-                    'p.project_title',
+                    'p.project_name as project_title',
                     'cd.company_name',
                     'ts.status_name',
-                    'c.hourly_rate'
+                    'c.contract_value as hourly_rate'
                 )
                 ->first();
 
@@ -389,9 +388,9 @@ class FreelancerTimesheetController extends Controller
                 }
             }
 
-            // Update timesheet status to pending
-            $pendingStatus = DB::table('timesheet_status')
-                ->where('status_name', 'Pending')
+            // Update timesheet status to submitted
+            $submittedStatus = DB::table('timesheet_status')
+                ->where('status_name', 'Submitted')
                 ->first();
 
             $totalAmount = $totalHours * $timesheet->hourly_rate;
@@ -399,8 +398,7 @@ class FreelancerTimesheetController extends Controller
             DB::table('timesheets')
                 ->where('timesheet_id', $id)
                 ->update([
-                    'status_id' => $pendingStatus->status_id,
-                    'status_display_name' => $pendingStatus->status_name,
+                    'status_id' => $submittedStatus->status_id,
                     'total_hours' => $totalHours,
                     'total_amount' => $totalAmount,
                     'resubmission_count' => DB::raw('resubmission_count + 1'),
@@ -412,7 +410,7 @@ class FreelancerTimesheetController extends Controller
 
             // Notify company
             $companyUser = DB::table('company_details')
-                ->where('company_id', $timesheet->company_id)
+                ->where('user_id', $timesheet->company_id)
                 ->value('user_id');
 
             DB::table('notifications')->insert([
@@ -578,7 +576,7 @@ class FreelancerTimesheetController extends Controller
                 ->join('timesheets as t', 'p.timesheet_id', '=', 't.timesheet_id')
                 ->join('invoices as i', 'p.invoice_id', '=', 'i.invoice_id')
                 ->join('projects as proj', 't.project_id', '=', 'proj.project_id')
-                ->join('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 't.company_id', '=', 'cd.user_id')
                 ->where('t.freelancer_id', $freelancerId)
                 ->select(
                     'p.*',
@@ -586,7 +584,7 @@ class FreelancerTimesheetController extends Controller
                     't.end_date',
                     't.total_hours',
                     'i.invoice_number',
-                    'proj.project_title',
+                    'proj.project_name as project_title',
                     'cd.company_name'
                 )
                 ->orderBy('p.created_at', 'desc')

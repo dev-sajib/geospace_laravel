@@ -23,7 +23,7 @@ class HomeController extends Controller
     {
         try {
             $projects = DB::table('projects as p')
-                ->join('company_details as cd', 'p.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 'p.company_id', '=', 'cd.user_id')
                 ->select(
                     'p.*',
                     'cd.company_name',
@@ -130,20 +130,20 @@ class HomeController extends Controller
             $timesheets = DB::table('timesheets as t')
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
-                ->join('users as u', 't.user_id', '=', 'u.user_id')
+                ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
                 ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
-                ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
+                ->join('company_details as cd', 'c.company_id', '=', 'cd.user_id')
                 ->select(
                     't.*',
                     'c.contract_title',
-                    'c.hourly_rate',
-                    'p.project_title',
+                    'c.contract_value as hourly_rate',
+                    'p.project_name as project_title',
                     'u.email as freelancer_email',
                     'ud.first_name',
                     'ud.last_name',
                     'cd.company_name'
                 )
-                ->where('t.status_id', 1) // Pending status
+                ->where('t.status_id', 2) // Submitted status
                 ->orderBy('t.submitted_at', 'desc')
                 ->get();
 
@@ -209,8 +209,8 @@ class HomeController extends Controller
                 'total_freelancers' => User::whereHas('role', function($query) {
                     $query->where('role_name', 'Freelancer');
                 })->where('is_active', true)->count(),
-                'pending_timesheets' => Timesheet::where('status_id', 1)->count(),
-                'approved_timesheets' => Timesheet::where('status_id', 2)->count(),
+                'pending_timesheets' => Timesheet::where('status_id', 2)->count(),
+                'approved_timesheets' => Timesheet::where('status_id', 4)->count(),
                 'recent_activities' => DB::table('activity_logs')
                     ->join('users', 'activity_logs.user_id', '=', 'users.user_id')
                     ->select('activity_logs.*', 'users.email')

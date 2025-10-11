@@ -26,7 +26,7 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'c.hourly_rate as contract_hourly_rate',
+                           'ud.hourly_rate as contract_hourly_rate',
                            'p.project_title',
                            'p.project_type',
                            'cd.company_name',
@@ -35,7 +35,7 @@ class AdminTimesheetManagementController extends Controller {
                            'ud.profile_image as freelancer_image',
                            'ts.status_name',
                            'ts.status_description',
-                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
                        )
                        ->orderBy( 't.created_at', 'desc' );
 
@@ -95,13 +95,13 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'c.hourly_rate',
+                           'ud.hourly_rate',
                            'p.project_title',
                            'cd.company_name',
                            'u.email as freelancer_email',
                            DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                            'ud.profile_image as freelancer_image',
-                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
                        )
                        ->where( 't.status_id', 1 ); // Pending status
 
@@ -144,13 +144,13 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'c.hourly_rate',
+                           'ud.hourly_rate',
                            'p.project_title',
                            'cd.company_name',
                            'u.email as freelancer_email',
                            DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                            'ud.profile_image as freelancer_image',
-                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
                        )
                        ->where( 't.status_id', 2 ); // Approved status
 
@@ -158,7 +158,7 @@ class AdminTimesheetManagementController extends Controller {
                 $query->where( 'c.company_id', $companyId );
             }
 
-            $approvedTimesheets = $query->orderBy( 't.reviewed_by', 'desc' )->paginate( $perPage );
+            $approvedTimesheets = $query->orderBy( 't.approved_by', 'desc' )->paginate( $perPage );
 
             return response()->json( [
                 'success' => true,
@@ -232,14 +232,14 @@ class AdminTimesheetManagementController extends Controller {
                            ->leftJoin( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                            ->leftJoin( 'users as cu', 'cd.user_id', '=', 'cu.user_id' )
                            ->leftJoin( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
-                           ->leftJoin( 'users as approver', 't.reviewed_by', '=', 'approver.user_id' )
+                           ->leftJoin( 'users as approver', 't.approved_by', '=', 'approver.user_id' )
                            ->leftJoin( 'user_details as approver_details', 'approver.user_id', '=', 'approver_details.user_id' )
                            ->where( 't.timesheet_id', $id )
                            ->select(
                                't.*',
                                'c.contract_title',
                                'c.contract_description',
-                               'c.hourly_rate as contract_hourly_rate',
+                               'ud.hourly_rate as contract_hourly_rate',
                                'c.status as contract_status',
                                'c.start_date as contract_start_date',
                                'c.end_date as contract_end_date',
@@ -259,7 +259,7 @@ class AdminTimesheetManagementController extends Controller {
                                'ts.status_description',
                                DB::raw( "CONCAT(approver_details.first_name, ' ', approver_details.last_name) as approved_by_name" ),
                                'approver.email as approver_email',
-                               DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )
+                               DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
                            )
                            ->first();
 
@@ -301,7 +301,7 @@ class AdminTimesheetManagementController extends Controller {
                            ->leftJoin( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
                            ->leftJoin( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                            ->leftJoin( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
-                           ->leftJoin( 'users as reviewer', 't.reviewed_by', '=', 'reviewer.user_id' )
+                           ->leftJoin( 'users as reviewer', 't.approved_by', '=', 'reviewer.user_id' )
                            ->leftJoin( 'user_details as reviewer_details', 'reviewer.user_id', '=', 'reviewer_details.user_id' )
                            ->where( 't.timesheet_id', $id )
                            ->select(
@@ -318,7 +318,7 @@ class AdminTimesheetManagementController extends Controller {
                                't.status_id',
                                't.submitted_at',
                                't.reviewed_at',
-                               't.reviewed_by',
+                               't.approved_by',
                                'p.project_title',
                                'p.project_description',
                                DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
@@ -327,7 +327,7 @@ class AdminTimesheetManagementController extends Controller {
                                'cd.company_name',
                                'cd.company_type',
                                'ts.status_name',
-                               'c.hourly_rate as contract_hourly_rate',
+                               'ud.hourly_rate as contract_hourly_rate',
                                'c.contract_title',
                                DB::raw( "CONCAT(reviewer_details.first_name, ' ', reviewer_details.last_name) as approved_by_name" )
                            )
@@ -613,7 +613,7 @@ class AdminTimesheetManagementController extends Controller {
             DB::table( 'timesheets' )->where( 'timesheet_id', $id )->update( [
                 'status_id'           => 2,
                 'status_display_name' => $approvedStatus->status_name ?? 'Approved',
-                'reviewed_by'         => auth()->id(),
+                'approved_by'         => auth()->id(),
                 'approved_at'         => now(),
                 'updated_at'          => now()
             ] );
@@ -690,7 +690,7 @@ class AdminTimesheetManagementController extends Controller {
                 'status_id'           => 3,
                 'status_display_name' => $rejectedStatus->status_name ?? 'Rejected',
                 'rejected_reason'     => $request->rejected_reason,
-                'reviewed_by'         => auth()->id(),
+                'approved_by'         => auth()->id(),
                 'approved_at'         => now(),
                 'updated_at'          => now()
             ] );

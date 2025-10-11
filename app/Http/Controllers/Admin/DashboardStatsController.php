@@ -27,9 +27,9 @@ class DashboardStatsController extends Controller
                 ->where('status', 'Active')
                 ->count();
 
-            // 3. Pending Timesheets (status_id = 1 which is 'Pending')
+            // 3. Pending Timesheets (status_id = 2 which is 'Submitted')
             $pendingTimesheets = DB::table('timesheets')
-                ->where('status_id', 1)
+                ->where('status_id', 2)
                 ->count();
 
             // 4. Open Dispute Tickets (status_id = 1 which is 'Open')

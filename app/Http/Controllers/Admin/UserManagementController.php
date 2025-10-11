@@ -306,26 +306,26 @@ class UserManagementController extends Controller
     {
         try {
             $users = User::with(['userDetails', 'role'])
-                         ->where('verification_status', 'verified')
                          ->where('is_active', true)
+                         ->where('is_verified', true)
                          ->orderBy('created_at', 'desc')
                          ->get()
                          ->map(function ($user) {
+                             Log::error(print_r($user->userDetails, true));
                              return [
                                  'UserId' => $user->user_id,
-                                 'Name' => $user->userDetails
-                                     ? $user->userDetails->first_name . ' ' . $user->userDetails->last_name
-                                     : 'N/A',
+                                 'UserName' => $user->userDetails
+                                     ? trim($user->userDetails->first_name . ' ' . $user->userDetails->last_name)
+                                     : ($user->userDetails ? $user->userDetails->first_name : 'N/A'),
                                  'Email' => $user->email,
-                                 'Type' => $user->role->role_name ?? 'N/A',
-                                 'Status' => 'Verified',
-                                 'CreatedAt' => $user->created_at->format('Y-m-d H:i:s')
+                                 'Role' => $user->role->role_name ?? 'N/A',
+                                 'Status' => $user->is_active ? 'Active' : 'Inactive',
+                                 'JoinedDate' => $user->created_at->format('Y-m-d H:i:s'),
+                                 'LastActiveDate' => $user->last_login ? $user->last_login->format('Y-m-d H:i:s') : 'Never'
                              ];
                          });
 
-            return response()->json(
-                MessageHelper::success('Verified users retrieved successfully', $users)
-            );
+            return response()->json($users);
 
         } catch (\Exception $e) {
             Log::error('Get verified users error: ' . $e->getMessage());
