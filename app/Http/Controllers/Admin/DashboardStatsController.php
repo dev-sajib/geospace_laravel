@@ -27,9 +27,9 @@ class DashboardStatsController extends Controller
                 ->where('status', 'Active')
                 ->count();
 
-            // 3. Pending Timesheets (status_id = 2 which is 'Submitted')
+            // 3. Pending Timesheets (status_id = 1 which is 'Pending') - FIXED
             $pendingTimesheets = DB::table('timesheets')
-                ->where('status_id', 2)
+                ->where('status_id', 1)  // FIXED: Was 2, now 1
                 ->count();
 
             // 4. Open Dispute Tickets (status_id = 1 which is 'Open')
@@ -38,7 +38,6 @@ class DashboardStatsController extends Controller
                 ->count();
 
             // 5. Weekly Visitors Data (Platform Metrics)
-            // Get visitor data for the last 7 days
             $weeklyVisitors = DB::table('visitor_logs')
                 ->select(
                     DB::raw('DATE(created_at) as date'),
@@ -50,7 +49,6 @@ class DashboardStatsController extends Controller
                 ->limit(7)
                 ->get();
 
-            // Calculate total weekly visitors
             $totalWeeklyVisitors = $weeklyVisitors->sum('count');
 
             return response()->json([

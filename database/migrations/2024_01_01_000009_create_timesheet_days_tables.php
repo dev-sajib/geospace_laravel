@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('timesheet_days', function (Blueprint $table) {
-            $table->id('day_id');
-            $table->unsignedBigInteger('timesheet_id');
+            $table->integer('day_id')->autoIncrement();
+            $table->integer('timesheet_id');
             $table->date('work_date');
-            $table->decimal('hours_worked', 5, 2)->default(0);
-            $table->text('description')->nullable();
-            $table->text('tasks_completed')->nullable();
-            $table->boolean('is_billable')->default(true);
+            $table->string('day_name', 20);
+            $table->integer('day_number');
+            $table->decimal('hours_worked', 4, 2)->default(0.00);
+            $table->text('task_description')->nullable();
             $table->timestamps();
 
             $table->foreign('timesheet_id')
@@ -23,17 +23,17 @@ return new class extends Migration
                   ->on('timesheets')
                   ->onDelete('cascade');
             
-            $table->index('timesheet_id');
-            $table->index('work_date');
+            $table->index('timesheet_id', 'idx_timesheet_days_timesheet');
+            $table->index('work_date', 'idx_timesheet_days_date');
         });
 
         Schema::create('timesheet_day_comments', function (Blueprint $table) {
-            $table->id('comment_id');
-            $table->unsignedBigInteger('day_id');
-            $table->unsignedBigInteger('timesheet_id');
-            $table->unsignedBigInteger('user_id');
+            $table->integer('comment_id')->autoIncrement();
+            $table->integer('day_id');
+            $table->integer('timesheet_id');
+            $table->integer('comment_by');
+            $table->enum('comment_type', ['Company', 'Freelancer']);
             $table->text('comment_text');
-            $table->enum('comment_type', ['Approval', 'Rejection', 'Query', 'General'])->default('General');
             $table->timestamp('created_at')->useCurrent();
 
             $table->foreign('day_id')
@@ -46,14 +46,14 @@ return new class extends Migration
                   ->on('timesheets')
                   ->onDelete('cascade');
             
-            $table->foreign('user_id')
+            $table->foreign('comment_by')
                   ->references('user_id')
                   ->on('users')
                   ->onDelete('cascade');
             
-            $table->index('day_id');
-            $table->index('timesheet_id');
-            $table->index('comment_type');
+            $table->index('day_id', 'idx_comments_day');
+            $table->index('timesheet_id', 'idx_comments_timesheet');
+            $table->index('comment_type', 'idx_comments_type');
         });
     }
 

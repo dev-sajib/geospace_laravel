@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_details', function (Blueprint $table) {
-            $table->id('user_details_id');
-            $table->unsignedBigInteger('user_id');
+            $table->integer('user_details_id')->autoIncrement();
+            $table->integer('user_id');
             $table->string('first_name', 100);
             $table->string('last_name', 100);
             $table->string('phone', 20)->nullable();

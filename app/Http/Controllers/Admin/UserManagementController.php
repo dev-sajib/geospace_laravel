@@ -2,41 +2,105 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Helpers\MessageHelper;
 use App\Models\User;
 use App\Models\UserDetail;
-use App\Helpers\MessageHelper;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
-class UserManagementController extends Controller
+class UserManagementController extends \App\Http\Controllers\Controller
 {
     /**
-     * Get pending verification users
+     * Get verified users list
+     */
+    public function verifiedUserList(Request $request): JsonResponse
+    {
+        try {
+            $users = User::with(['userDetails', 'companyDetails', 'role'])
+                         ->where('is_active', true)
+                         ->where('verification_status', 'verified')
+                         ->orderBy('created_at', 'desc')
+                         ->get()
+                         ->map(function ($user) {
+                             $userName = 'N/A';
+                             
+                             if ($user->userDetails) {
+                                 $firstName = trim($user->userDetails->first_name ?? '');
+                                 $lastName = trim($user->userDetails->last_name ?? '');
+                                 if ($firstName || $lastName) {
+                                     $userName = trim($firstName . ' ' . $lastName);
+                                 }
+                             } elseif ($user->companyDetails && !empty($user->companyDetails->company_name)) {
+                                 $userName = $user->companyDetails->company_name;
+                             }
+
+                             if ($userName === 'N/A' || empty($userName)) {
+                                 $userName = $user->email;
+                             }
+
+                             return [
+                                 'UserId' => $user->user_id,
+                                 'UserName' => $userName,
+                                 'Email' => $user->email,
+                                 'Role' => $user->role->role_name ?? 'N/A',
+                                 'Status' => $user->is_active ? 'Active' : 'Inactive',
+                                 'JoinedDate' => $user->created_at->format('Y-m-d H:i:s'),
+                                 'LastActiveDate' => $user->last_login ? $user->last_login->format('Y-m-d H:i:s') : 'Never'
+                             ];
+                         });
+
+            return response()->json($users);
+
+        } catch (\Exception $e) {
+            Log::error('Get verified users error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve verified users'),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get pending verification list
+     * FIXED: Removed verification_status column references
      */
     public function pendingVerificationList(Request $request): JsonResponse
     {
         try {
-            $users = User::with(['userDetails', 'role'])
-                         ->where('role_id', 2) // Freelancers only
-                         ->whereIn('verification_status', ['pending', 'awaiting'])
+            $users = User::with(['userDetails', 'companyDetails', 'role'])
+                         ->where('verification_status', 'pending')  // FIXED: Only check is_verified
+                         ->where('is_active', true)      // Must be active to be pending
                          ->orderBy('created_at', 'desc')
                          ->get()
                          ->map(function ($user) {
+                             $userName = 'N/A';
+                             
+                             if ($user->userDetails) {
+                                 $firstName = trim($user->userDetails->first_name ?? '');
+                                 $lastName = trim($user->userDetails->last_name ?? '');
+                                 if ($firstName || $lastName) {
+                                     $userName = trim($firstName . ' ' . $lastName);
+                                 }
+                             } elseif ($user->companyDetails && !empty($user->companyDetails->company_name)) {
+                                 $userName = $user->companyDetails->company_name;
+                             }
+
+                             if ($userName === 'N/A' || empty($userName)) {
+                                 $userName = $user->email;
+                             }
+
                              return [
                                  'UserId' => $user->user_id,
-                                 'Name' => $user->userDetails
-                                     ? $user->userDetails->first_name . ' ' . $user->userDetails->last_name
-                                     : 'N/A',
+                                 'UserName' => $userName,
                                  'Email' => $user->email,
-                                 'Type' => $user->role->role_name ?? 'Freelancer',
-                                 'Status' => ucfirst($user->verification_status),
-                                 'CreatedAt' => $user->created_at->format('Y-m-d H:i:s'),
-                                 'ActionNeeded' => $user->verification_status === 'pending'
+                                 'Type' => $user->role->role_name ?? 'N/A',
+                                 'Status' => 'Pending',  // FIXED: Always pending if not verified
+                                 'SubmittedAt' => $user->created_at->format('Y-m-d H:i:s'),
+                                 'HasDetails' => $user->userDetails !== null || $user->companyDetails !== null,
+                                 'Action' => ($user->userDetails || $user->companyDetails)
                                      ? 'Review Documents'
                                      : 'Validate Account'
                              ];
@@ -56,7 +120,59 @@ class UserManagementController extends Controller
     }
 
     /**
+     * Get suspended accounts list
+     * FIXED: Only check is_active status
+     */
+    public function suspendedAccountsList(Request $request): JsonResponse
+    {
+        try {
+            $users = User::with(['userDetails', 'companyDetails', 'role'])
+                         ->where('is_active', false)  // FIXED: Only check is_active
+                         ->orderBy('created_at', 'desc')
+                         ->get()
+                         ->map(function ($user) {
+                             $userName = 'N/A';
+                             
+                             if ($user->userDetails) {
+                                 $firstName = trim($user->userDetails->first_name ?? '');
+                                 $lastName = trim($user->userDetails->last_name ?? '');
+                                 if ($firstName || $lastName) {
+                                     $userName = trim($firstName . ' ' . $lastName);
+                                 }
+                             } elseif ($user->companyDetails && !empty($user->companyDetails->company_name)) {
+                                 $userName = $user->companyDetails->company_name;
+                             }
+
+                             if ($userName === 'N/A' || empty($userName)) {
+                                 $userName = $user->email;
+                             }
+
+                             return [
+                                 'UserId' => $user->user_id,
+                                 'Name' => $userName,
+                                 'Email' => $user->email,
+                                 'Type' => $user->role->role_name ?? 'N/A',
+                                 'Status' => 'Suspended',  // FIXED: Always suspended if not active
+                                 'CreatedAt' => $user->created_at->format('Y-m-d H:i:s')
+                             ];
+                         });
+
+            return response()->json(
+                MessageHelper::success('Suspended accounts retrieved successfully', $users)
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get suspended accounts error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve suspended accounts'),
+                500
+            );
+        }
+    }
+
+    /**
      * Get user details for review
+     * FIXED: Removed verification_status
      */
     public function getUserDetails(Request $request): JsonResponse
     {
@@ -74,7 +190,7 @@ class UserManagementController extends Controller
 
             $userId = $request->input('UserId');
 
-            $user = User::with(['userDetails', 'role'])
+            $user = User::with(['userDetails', 'companyDetails', 'role'])
                         ->where('user_id', $userId)
                         ->first();
 
@@ -92,7 +208,7 @@ class UserManagementController extends Controller
                 'Email' => $user->email,
                 'UserPosition' => $user->user_position,
                 'RoleName' => $user->role->role_name ?? 'N/A',
-                'VerificationStatus' => $user->verification_status,
+                'IsVerified' => $user->is_verified,  // FIXED: Use is_verified instead
                 'IsActive' => $user->is_active,
                 'CreatedAt' => $user->created_at->format('Y-m-d H:i:s'),
 
@@ -129,7 +245,7 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Send verification request email (Phase 1 to Phase 2)
+     * Send verification request email
      */
     public function sendVerificationRequest(Request $request): JsonResponse
     {
@@ -145,67 +261,41 @@ class UserManagementController extends Controller
                 );
             }
 
-            $userId = $request->input('UserId');
-            $user = User::with('userDetails')->find($userId);
+            $user = User::find($request->input('UserId'));
 
-            if (!$user) {
-                return response()->json(
-                    MessageHelper::notFound('User not found'),
-                    404
-                );
+            try {
+                Mail::send('emails.verification_pending', ['user' => $user], function ($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject('Account Verification In Progress');
+                });
+            } catch (\Exception $mailException) {
+                Log::error('Failed to send verification email: ' . $mailException->getMessage());
             }
 
-            DB::beginTransaction();
-
-            // Update status to awaiting
-            $user->verification_status = 'awaiting';
-            $user->save();
-
-            // Send email
-            $userName = $user->userDetails
-                ? $user->userDetails->first_name . ' ' . $user->userDetails->last_name
-                : 'User';
-
-            Mail::send([], [], function ($message) use ($user, $userName) {
-                $message->to($user->email)
-                        ->subject('GeoSpace - Verification Phase 2')
-                        ->html("
-                        <h2>Hello {$userName},</h2>
-                        <p>Congratulations! You are eligible for the first phase.</p>
-                        <p>Are you ready for the verification phase?</p>
-                        <p>If yes, please reply with 'YES' along with your available free time and date.</p>
-                        <p>One of our interviewers will contact you shortly.</p>
-                        <br>
-                        <p>Best regards,</p>
-                        <p>GeoSpace Team</p>
-                    ");
-            });
-
-            DB::commit();
-
             return response()->json(
-                MessageHelper::success('Verification request sent successfully')
+                MessageHelper::success('Verification request submitted successfully')
             );
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Send verification request error: ' . $e->getMessage());
             return response()->json(
-                MessageHelper::error('Failed to send verification request'),
+                MessageHelper::error('Failed to process verification request'),
                 500
             );
         }
     }
 
     /**
-     * Final verification - Approve or Reject
+     * Final verification (admin approves/rejects)
+     * FIXED: Only update is_verified and is_active
      */
     public function finalVerification(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
                 'UserId' => 'required|integer|exists:users,user_id',
-                'Action' => 'required|in:approve,reject'
+                'Status' => 'required|in:verified,rejected',
+                'Reason' => 'nullable|string'
             ]);
 
             if ($validator->fails()) {
@@ -215,82 +305,40 @@ class UserManagementController extends Controller
                 );
             }
 
-            $userId = $request->input('UserId');
-            $action = $request->input('Action');
+            $user = User::find($request->input('UserId'));
+            $status = $request->input('Status');
 
-            $user = User::with('userDetails')->find($userId);
+            // Update user status - FIXED
+            $user->is_verified = ($status === 'verified');
+            $user->is_active = ($status === 'verified');
+            if ($status === 'verified') {
+                $user->email_verified_at = now();
+            }
+            $user->save();
 
-            if (!$user) {
-                return response()->json(
-                    MessageHelper::notFound('User not found'),
-                    404
-                );
+            // Send email notification
+            try {
+                if ($status === 'verified') {
+                    Mail::send('emails.account_verified', ['user' => $user], function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Account Verified - Welcome to GeoSpace!');
+                    });
+                } else {
+                    $reason = $request->input('Reason', 'Your account did not meet our verification requirements.');
+                    Mail::send('emails.account_rejected', ['user' => $user, 'reason' => $reason], function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Account Verification Status');
+                    });
+                }
+            } catch (\Exception $mailException) {
+                Log::error('Failed to send verification status email: ' . $mailException->getMessage());
             }
 
-            DB::beginTransaction();
-
-            $userName = $user->userDetails
-                ? $user->userDetails->first_name . ' ' . $user->userDetails->last_name
-                : 'User';
-
-            if ($action === 'approve') {
-                // Approve user
-                $user->verification_status = 'verified';
-                $user->is_verified = true;
-                $user->is_active = true;
-                $user->save();
-
-                // Send welcome email
-                Mail::send([], [], function ($message) use ($user, $userName) {
-                    $message->to($user->email)
-                            ->subject('Welcome to GeoSpace!')
-                            ->html("
-                            <h2>Welcome to GeoSpace, {$userName}!</h2>
-                            <p>Your account has been successfully verified and activated.</p>
-                            <p>You can now log in and start exploring opportunities on our platform.</p>
-                            <p>Login here: <a href='" . env('FRONTEND_URL') . "/login'>Login to GeoSpace</a></p>
-                            <br>
-                            <p>Best regards,</p>
-                            <p>GeoSpace Team</p>
-                        ");
-                });
-
-                DB::commit();
-
-                return response()->json(
-                    MessageHelper::success('User approved and welcome email sent')
-                );
-
-            } else {
-                // Reject user
-                $user->verification_status = 'rejected';
-                $user->is_active = false;
-                $user->save();
-
-                // Send rejection email
-                Mail::send([], [], function ($message) use ($user, $userName) {
-                    $message->to($user->email)
-                            ->subject('GeoSpace - Application Status')
-                            ->html("
-                            <h2>Hello {$userName},</h2>
-                            <p>Thank you for your interest in joining GeoSpace.</p>
-                            <p>Unfortunately, we are unable to approve your application at this time.</p>
-                            <p>If you have any questions, please feel free to contact our support team.</p>
-                            <br>
-                            <p>Best regards,</p>
-                            <p>GeoSpace Team</p>
-                        ");
-                });
-
-                DB::commit();
-
-                return response()->json(
-                    MessageHelper::success('User rejected and notification email sent')
-                );
-            }
+            return response()->json(
+                MessageHelper::success('User verification status updated successfully')
+            );
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Final verification error: ' . $e->getMessage());
             return response()->json(
                 MessageHelper::error('Failed to process verification'),
@@ -298,76 +346,55 @@ class UserManagementController extends Controller
             );
         }
     }
-
-    /**
-     * Get verified users list
-     */
-    public function verifiedUserList(Request $request): JsonResponse
+    public function updateUserStatus(Request $request): JsonResponse
     {
         try {
-            $users = User::with(['userDetails', 'role'])
-                         ->where('is_active', true)
-                         ->where('is_verified', true)
-                         ->orderBy('created_at', 'desc')
-                         ->get()
-                         ->map(function ($user) {
-                             Log::error(print_r($user->userDetails, true));
-                             return [
-                                 'UserId' => $user->user_id,
-                                 'UserName' => $user->userDetails
-                                     ? trim($user->userDetails->first_name . ' ' . $user->userDetails->last_name)
-                                     : ($user->userDetails ? $user->userDetails->first_name : 'N/A'),
-                                 'Email' => $user->email,
-                                 'Role' => $user->role->role_name ?? 'N/A',
-                                 'Status' => $user->is_active ? 'Active' : 'Inactive',
-                                 'JoinedDate' => $user->created_at->format('Y-m-d H:i:s'),
-                                 'LastActiveDate' => $user->last_login ? $user->last_login->format('Y-m-d H:i:s') : 'Never'
-                             ];
-                         });
+            $validator = Validator::make($request->all(), [
+                'UserId' => 'required|integer|exists:users,user_id',
+                'IsActive' => 'required|boolean',
+                'Reason' => 'nullable|string'
+            ]);
 
-            return response()->json($users);
+            if ($validator->fails()) {
+                return response()->json(
+                    MessageHelper::validationError($validator->errors()->toArray()),
+                    422
+                );
+            }
 
-        } catch (\Exception $e) {
-            Log::error('Get verified users error: ' . $e->getMessage());
-            return response()->json(
-                MessageHelper::error('Failed to retrieve verified users'),
-                500
-            );
-        }
-    }
+            $user = User::find($request->input('UserId'));
+            $isActive = $request->input('IsActive');
+            $reason = $request->input('Reason');
 
-    /**
-     * Get suspended accounts list
-     */
-    public function suspendedAccountsList(Request $request): JsonResponse
-    {
-        try {
-            $users = User::with(['userDetails', 'role'])
-                         ->where('verification_status', 'rejected')
-                         ->orWhere('is_active', false)
-                         ->orderBy('created_at', 'desc')
-                         ->get()
-                         ->map(function ($user) {
-                             return [
-                                 'UserId' => $user->user_id,
-                                 'Name' => $user->userDetails
-                                     ? $user->userDetails->first_name . ' ' . $user->userDetails->last_name
-                                     : 'N/A',
-                                 'Email' => $user->email,
-                                 'Type' => $user->role->role_name ?? 'N/A',
-                                 'Status' => ucfirst($user->verification_status),
-                                 'CreatedAt' => $user->created_at->format('Y-m-d H:i:s')
-                             ];
-                         });
+            // Update user status
+            $user->is_active = $isActive;
+            $user->save();
+
+            // Send email notification
+            try {
+                if ($isActive) {
+                    Mail::send('emails.account_activated', ['user' => $user], function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Account Activated');
+                    });
+                } else {
+                    Mail::send('emails.account_suspended', ['user' => $user, 'reason' => $reason], function ($message) use ($user) {
+                        $message->to($user->email)
+                                ->subject('Account Suspended');
+                    });
+                }
+            } catch (\Exception $mailException) {
+                Log::error('Failed to send status update email: ' . $mailException->getMessage());
+            }
 
             return response()->json(
-                MessageHelper::success('Suspended accounts retrieved successfully', $users)
+                MessageHelper::success('User status updated successfully')
             );
 
         } catch (\Exception $e) {
-            Log::error('Get suspended accounts error: ' . $e->getMessage());
+            Log::error('Update user status error: ' . $e->getMessage());
             return response()->json(
-                MessageHelper::error('Failed to retrieve suspended accounts'),
+                MessageHelper::error('Failed to update user status'),
                 500
             );
         }

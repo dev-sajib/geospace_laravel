@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class AdminTimesheetManagementController extends Controller {
@@ -26,7 +27,7 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'ud.hourly_rate as contract_hourly_rate',
+                           'c.hourly_rate as contract_hourly_rate',  // FIXED: from contracts table
                            'p.project_title',
                            'p.project_type',
                            'cd.company_name',
@@ -35,7 +36,7 @@ class AdminTimesheetManagementController extends Controller {
                            'ud.profile_image as freelancer_image',
                            'ts.status_name',
                            'ts.status_description',
-                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )  // FIXED
                        )
                        ->orderBy( 't.created_at', 'desc' );
 
@@ -95,13 +96,13 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'ud.hourly_rate',
+                           'c.hourly_rate',  // FIXED
                            'p.project_title',
                            'cd.company_name',
                            'u.email as freelancer_email',
                            DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                            'ud.profile_image as freelancer_image',
-                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )  // FIXED
                        )
                        ->where( 't.status_id', 1 ); // Pending status
 
@@ -144,13 +145,13 @@ class AdminTimesheetManagementController extends Controller {
                        ->select(
                            't.*',
                            'c.contract_title',
-                           'ud.hourly_rate',
+                           'c.hourly_rate',  // FIXED
                            'p.project_title',
                            'cd.company_name',
                            'u.email as freelancer_email',
                            DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                            'ud.profile_image as freelancer_image',
-                           DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
+                           DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )  // FIXED
                        )
                        ->where( 't.status_id', 2 ); // Approved status
 
@@ -158,8 +159,8 @@ class AdminTimesheetManagementController extends Controller {
                 $query->where( 'c.company_id', $companyId );
             }
 
-            $approvedTimesheets = $query->orderBy( 't.approved_by', 'desc' )->paginate( $perPage );
-
+            $approvedTimesheets = $query->orderBy( 't.reviewed_at', 'desc' )->paginate( $perPage );
+            
             return response()->json( [
                 'success' => true,
                 'message' => 'Approved timesheets retrieved successfully',
@@ -170,49 +171,6 @@ class AdminTimesheetManagementController extends Controller {
             return response()->json( [
                 'success' => false,
                 'message' => 'Failed to retrieve approved timesheets',
-                'error'   => $e->getMessage()
-            ], 500 );
-        }
-    }
-
-    /**
-     * Get all accepted timesheets
-     * GET /api/v1/admin/timesheets/accepted
-     */
-    public function acceptedTimesheets() {
-        try {
-            $timesheets = DB::table( 'timesheets as t' )
-                            ->join( 'projects as p', 't.project_id', '=', 'p.project_id' )
-                            ->join( 'users as u', 't.freelancer_id', '=', 'u.user_id' )
-                            ->join( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
-                            ->join( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
-                            ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
-                            ->leftJoin( 'invoices as i', 't.timesheet_id', '=', 'i.timesheet_id' )
-                            ->where( 'ts.status_name', 'Accepted' )
-                            ->select(
-                                't.*',
-                                'p.project_title',
-                                DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
-                                'u.email as freelancer_email',
-                                'cd.company_name',
-                                'ts.status_name',
-                                'i.invoice_number',
-                                'i.invoice_id',
-                                'i.status as invoice_status'
-                            )
-                            ->orderBy( 't.created_at', 'desc' )
-                            ->paginate( 20 );
-
-            return response()->json( [
-                'success' => true,
-                'message' => 'Accepted timesheets retrieved successfully',
-                'data'    => $timesheets
-            ], 200 );
-
-        } catch ( Exception $e ) {
-            return response()->json( [
-                'success' => false,
-                'message' => 'Failed to retrieve accepted timesheets',
                 'error'   => $e->getMessage()
             ], 500 );
         }
@@ -232,14 +190,14 @@ class AdminTimesheetManagementController extends Controller {
                            ->leftJoin( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                            ->leftJoin( 'users as cu', 'cd.user_id', '=', 'cu.user_id' )
                            ->leftJoin( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
-                           ->leftJoin( 'users as approver', 't.approved_by', '=', 'approver.user_id' )
+                           ->leftJoin( 'users as approver', 't.reviewed_by', '=', 'approver.user_id' )
                            ->leftJoin( 'user_details as approver_details', 'approver.user_id', '=', 'approver_details.user_id' )
                            ->where( 't.timesheet_id', $id )
                            ->select(
                                't.*',
                                'c.contract_title',
                                'c.contract_description',
-                               'ud.hourly_rate as contract_hourly_rate',
+                               'c.hourly_rate as contract_hourly_rate',  // FIXED
                                'c.status as contract_status',
                                'c.start_date as contract_start_date',
                                'c.end_date as contract_end_date',
@@ -254,12 +212,11 @@ class AdminTimesheetManagementController extends Controller {
                                DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                                'ud.profile_image as freelancer_image',
                                'ud.phone as freelancer_phone',
-                               'ud.hourly_rate as freelancer_hourly_rate',
                                'ts.status_name',
                                'ts.status_description',
-                               DB::raw( "CONCAT(approver_details.first_name, ' ', approver_details.last_name) as approved_by_name" ),
+                               DB::raw( "CONCAT(approver_details.first_name, ' ', approver_details.last_name) as reviewed_by_name" ),
                                'approver.email as approver_email',
-                               DB::raw( "(t.total_hours * ud.hourly_rate) as calculated_amount" )
+                               DB::raw( "(t.total_hours * c.hourly_rate) as calculated_amount" )  // FIXED
                            )
                            ->first();
 
@@ -286,129 +243,78 @@ class AdminTimesheetManagementController extends Controller {
     }
 
     /**
-     * Get detailed timesheet information with days and comments
+     * Get timesheet details with days for PDF generation
      * GET /api/v1/admin/timesheets/{id}/details
      */
-    public function getTimesheetDetails( $id ) {
+    public function getTimesheetDetails($id)
+    {
         try {
-            // Get main timesheet with related info
-            // In getTimesheetDetails method, update the query:
-
-            $timesheet = DB::table( 'timesheets as t' )
-                           ->leftJoin( 'contracts as c', 't.contract_id', '=', 'c.contract_id' )
-                           ->leftJoin( 'projects as p', 't.project_id', '=', 'p.project_id' )
-                           ->leftJoin( 'users as u', 't.freelancer_id', '=', 'u.user_id' )
-                           ->leftJoin( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
-                           ->leftJoin( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
-                           ->leftJoin( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
-                           ->leftJoin( 'users as reviewer', 't.approved_by', '=', 'reviewer.user_id' )
-                           ->leftJoin( 'user_details as reviewer_details', 'reviewer.user_id', '=', 'reviewer_details.user_id' )
-                           ->where( 't.timesheet_id', $id )
+            // Get timesheet with all related information
+            $timesheet = DB::table('timesheets as t')
+                           ->leftJoin('contracts as c', 't.contract_id', '=', 'c.contract_id')
+                           ->leftJoin('projects as p', 't.project_id', '=', 'p.project_id')
+                           ->leftJoin('users as u', 't.freelancer_id', '=', 'u.user_id')
+                           ->leftJoin('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                           ->leftJoin('company_details as cd', 't.company_id', '=', 'cd.company_id')
+                           ->leftJoin('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                            ->select(
-                               't.timesheet_id',
-                               't.contract_id',
-                               't.freelancer_id',
-                               't.company_id',
-                               't.project_id',
-                               't.start_date',
-                               't.end_date',
-                               't.total_hours',
-                               't.hourly_rate',
-                               't.total_amount',
-                               't.status_id',
-                               't.submitted_at',
-                               't.reviewed_at',
-                               't.approved_by',
-                               'p.project_title',
-                               'p.project_description',
-                               DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
-                               'u.email as freelancer_email',
-                               'ud.phone as freelancer_phone',
-                               'cd.company_name',
-                               'cd.company_type',
-                               'ts.status_name',
-                               'ud.hourly_rate as contract_hourly_rate',
+                               't.*',
                                'c.contract_title',
-                               DB::raw( "CONCAT(reviewer_details.first_name, ' ', reviewer_details.last_name) as approved_by_name" )
+                               'c.hourly_rate as contract_hourly_rate',
+                               'p.project_title',
+                               'cd.company_name',
+                               'cd.logo as company_logo',
+                               DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name"),
+                               'u.email as freelancer_email',
+                               'ts.status_name as status_display_name'
                            )
+                           ->where('t.timesheet_id', $id)
                            ->first();
 
-            if ( ! $timesheet ) {
-                return response()->json( [
+            if (!$timesheet) {
+                return response()->json([
                     'success' => false,
                     'message' => 'Timesheet not found'
-                ], 404 );
+                ], 404);
             }
 
             // Get timesheet days
-            $days = DB::table( 'timesheet_days as td' )
-                      ->where( 'td.timesheet_id', $id )
-                      ->orderBy( 'td.day_number', 'asc' )
+            $days = DB::table('timesheet_days')
+                      ->where('timesheet_id', $id)
+                      ->orderBy('day_number')
                       ->get();
 
-            // Get comments for each day
-            foreach ( $days as $day ) {
-                $day->comments = DB::table( 'timesheet_day_comments as tdc' )
-                                   ->leftJoin( 'users as u', 'tdc.comment_by', '=', 'u.user_id' )
-                                   ->leftJoin( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
-                                   ->where( 'tdc.day_id', $day->day_id )
-                                   ->select(
-                                       'tdc.*',
-                                       DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as commenter_name" )
-                                   )
-                                   ->orderBy( 'tdc.created_at', 'desc' )
-                                   ->get();
-            }
-
-            // Get invoice if exists
-            $invoice = DB::table( 'invoices' )
-                         ->where( 'timesheet_id', $id )
-                         ->first();
-
-            // Get payment requests
-            $paymentRequests = DB::table( 'payment_requests' )
-                                 ->where( 'timesheet_id', $id )
-                                 ->orderBy( 'created_at', 'desc' )
-                                 ->get();
-
-            // Get payments
-            $payments = DB::table( 'payments' )
-                          ->where( 'timesheet_id', $id )
-                          ->orderBy( 'created_at', 'desc' )
-                          ->get();
-
-            return response()->json( [
+            return response()->json([
                 'success' => true,
-                'message' => 'Timesheet retrieved successfully',
-                'data'    => [
-                    'timesheet'        => $timesheet,
-                    'days'             => $days,
-                    'invoice'          => $invoice,
-                    'payment_requests' => $paymentRequests,
-                    'payments'         => $payments
+                'message' => 'Timesheet details retrieved successfully',
+                'data' => [
+                    'timesheet' => $timesheet,
+                    'days' => $days
                 ]
-            ], 200 );
+            ], 200);
 
-        } catch ( Exception $e ) {
-            return response()->json( [
+        } catch (Exception $e) {
+            return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve timesheet',
-                'error'   => $e->getMessage()
-            ], 500 );
+                'message' => 'Failed to retrieve timesheet details',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
     /**
-     * Create a new timesheet
+     * Create a new timesheet (COMPLETE REWRITE - timesheets work differently now)
      * POST /api/v1/admin/timesheets
      */
     public function store( Request $request ) {
         $validator = Validator::make( $request->all(), [
-            'contract_id'      => 'required|integer|exists:contracts,contract_id',
-            'user_id'          => 'required|integer|exists:users,user_id',
-            'work_date'        => 'required|date',
-            'work_hours'       => 'required|numeric|min:0.25|max:24',
-            'task_description' => 'nullable|string|max:1000'
+            'contract_id' => 'required|integer|exists:contracts,contract_id',
+            'start_date'  => 'required|date',
+            'end_date'    => 'required|date|after_or_equal:start_date',
+            'days'        => 'required|array|min:1',
+            'days.*.work_date' => 'required|date',
+            'days.*.hours_worked' => 'required|numeric|min:0.25|max:24',
+            'days.*.task_description' => 'nullable|string|max:1000'
         ] );
 
         if ( $validator->fails() ) {
@@ -419,10 +325,13 @@ class AdminTimesheetManagementController extends Controller {
             ], 422 );
         }
 
+        DB::beginTransaction();
         try {
             // Get contract details
-            $contract = DB::table( 'contracts' )
-                          ->where( 'contract_id', $request->contract_id )
+            $contract = DB::table( 'contracts as c' )
+                          ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
+                          ->where( 'c.contract_id', $request->contract_id )
+                          ->select('c.*')
                           ->first();
 
             if ( ! $contract ) {
@@ -437,28 +346,46 @@ class AdminTimesheetManagementController extends Controller {
                                ->where( 'status_name', 'Pending' )
                                ->first();
 
-            // Calculate amount
-            $amount = $request->work_hours * $contract->hourly_rate;
+            // Calculate total hours
+            $totalHours = collect($request->days)->sum('hours_worked');
+            $totalAmount = $totalHours * $contract->hourly_rate;
 
+            // Create timesheet
             $timesheetId = DB::table( 'timesheets' )->insertGetId( [
                 'contract_id'         => $request->contract_id,
-                'user_id'             => $request->user_id,
-                'work_date'           => $request->work_date,
-                'day_of_week'         => date( 'l', strtotime( $request->work_date ) ),
-                'work_hours'          => $request->work_hours,
-                'hourly_rate'         => $contract->hourly_rate,
-                'total_amount'        => $amount,
-                'task_description'    => $request->task_description,
+                'freelancer_id'       => $contract->freelancer_id,
+                'company_id'          => $contract->company_id,
+                'project_id'          => $contract->project_id,
+                'start_date'          => $request->start_date,
+                'end_date'            => $request->end_date,
                 'status_id'           => $pendingStatus->status_id ?? 1,
                 'status_display_name' => $pendingStatus->status_name ?? 'Pending',
+                'total_hours'         => $totalHours,
+                'hourly_rate'         => $contract->hourly_rate,
+                'total_amount'        => $totalAmount,
                 'submitted_at'        => now(),
                 'created_at'          => now(),
                 'updated_at'          => now()
             ] );
 
+            // Create timesheet days
+            $dayNumber = 1;
+            foreach ($request->days as $day) {
+                DB::table('timesheet_days')->insert([
+                    'timesheet_id' => $timesheetId,
+                    'work_date' => $day['work_date'],
+                    'day_name' => date('l', strtotime($day['work_date'])),
+                    'day_number' => $dayNumber++,
+                    'hours_worked' => $day['hours_worked'],
+                    'task_description' => $day['task_description'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
             // Log activity
             DB::table( 'activity_logs' )->insert( [
-                'user_id'     => auth()->id() ?? $request->user_id,
+                'user_id'     => auth()->id() ?? $contract->freelancer_id,
                 'action'      => 'Timesheet Created',
                 'entity_type' => 'timesheet',
                 'entity_id'   => $timesheetId,
@@ -478,6 +405,8 @@ class AdminTimesheetManagementController extends Controller {
                 'created_at' => now()
             ] );
 
+            DB::commit();
+
             $timesheet = DB::table( 'timesheets' )->where( 'timesheet_id', $timesheetId )->first();
 
             return response()->json( [
@@ -487,6 +416,7 @@ class AdminTimesheetManagementController extends Controller {
             ], 201 );
 
         } catch ( Exception $e ) {
+            DB::rollBack();
             return response()->json( [
                 'success' => false,
                 'message' => 'Failed to create timesheet',
@@ -496,16 +426,14 @@ class AdminTimesheetManagementController extends Controller {
     }
 
     /**
-     * Update the specified timesheet
+     * Update the specified timesheet (FIXED - removed non-existent columns)
      * PUT/PATCH /api/v1/admin/timesheets/{id}
      */
     public function update( Request $request, $id ) {
         $validator = Validator::make( $request->all(), [
-            'work_date'        => 'nullable|date',
-            'work_hours'       => 'nullable|numeric|min:0.25|max:24',
-            'task_description' => 'nullable|string|max:1000',
-            'status_id'        => 'nullable|integer|exists:timesheet_status,status_id',
-            'rejected_reason'  => 'nullable|string|max:500'
+            'status_id' => 'nullable|integer|exists:timesheet_status,status_id',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date'
         ] );
 
         if ( $validator->fails() ) {
@@ -528,27 +456,18 @@ class AdminTimesheetManagementController extends Controller {
 
             $updateData = [];
 
-            if ( $request->has( 'work_date' ) ) {
-                $updateData['work_date']   = $request->work_date;
-                $updateData['day_of_week'] = date( 'l', strtotime( $request->work_date ) );
+            if ( $request->has( 'start_date' ) ) {
+                $updateData['start_date'] = $request->start_date;
             }
 
-            if ( $request->has( 'work_hours' ) ) {
-                $updateData['work_hours'] = $request->work_hours;
-            }
-
-            if ( $request->has( 'task_description' ) ) {
-                $updateData['task_description'] = $request->task_description;
+            if ( $request->has( 'end_date' ) ) {
+                $updateData['end_date'] = $request->end_date;
             }
 
             if ( $request->has( 'status_id' ) ) {
-                $status                            = DB::table( 'timesheet_status' )->where( 'status_id', $request->status_id )->first();
-                $updateData['status_id']           = $request->status_id;
+                $status = DB::table( 'timesheet_status' )->where( 'status_id', $request->status_id )->first();
+                $updateData['status_id'] = $request->status_id;
                 $updateData['status_display_name'] = $status->status_name ?? null;
-            }
-
-            if ( $request->has( 'rejected_reason' ) ) {
-                $updateData['rejected_reason'] = $request->rejected_reason;
             }
 
             $updateData['updated_at'] = now();
@@ -607,14 +526,14 @@ class AdminTimesheetManagementController extends Controller {
                 ], 400 );
             }
 
-            // Get approved status (assuming status_id 2 is Approved)
+            // Get approved status (status_id 2 is Approved)
             $approvedStatus = DB::table( 'timesheet_status' )->where( 'status_id', 2 )->first();
 
             DB::table( 'timesheets' )->where( 'timesheet_id', $id )->update( [
                 'status_id'           => 2,
                 'status_display_name' => $approvedStatus->status_name ?? 'Approved',
-                'approved_by'         => auth()->id(),
-                'approved_at'         => now(),
+                'reviewed_by'         => auth()->id(),
+                'reviewed_at'         => now(),
                 'updated_at'          => now()
             ] );
 
@@ -631,7 +550,7 @@ class AdminTimesheetManagementController extends Controller {
 
             // Notify freelancer
             DB::table( 'notifications' )->insert( [
-                'user_id'    => $timesheet->user_id,
+                'user_id'    => $timesheet->freelancer_id,
                 'title'      => 'Timesheet Approved',
                 'message'    => "Your timesheet has been approved.",
                 'type'       => 'Success',
@@ -657,12 +576,12 @@ class AdminTimesheetManagementController extends Controller {
     }
 
     /**
-     * Reject a timesheet
+     * Reject a timesheet (FIXED - removed non-existent rejected_reason column)
      * POST /api/v1/admin/timesheets/{id}/reject
      */
     public function reject( Request $request, $id ) {
         $validator = Validator::make( $request->all(), [
-            'rejected_reason' => 'required|string|max:500'
+            'rejection_reason' => 'required|string|max:500'
         ] );
 
         if ( $validator->fails() ) {
@@ -683,25 +602,24 @@ class AdminTimesheetManagementController extends Controller {
                 ], 404 );
             }
 
-            // Get rejected status (assuming status_id 3 is Rejected)
+            // Get rejected status (status_id 3 is Rejected)
             $rejectedStatus = DB::table( 'timesheet_status' )->where( 'status_id', 3 )->first();
 
             DB::table( 'timesheets' )->where( 'timesheet_id', $id )->update( [
                 'status_id'           => 3,
                 'status_display_name' => $rejectedStatus->status_name ?? 'Rejected',
-                'rejected_reason'     => $request->rejected_reason,
-                'approved_by'         => auth()->id(),
-                'approved_at'         => now(),
+                'reviewed_by'         => auth()->id(),
+                'reviewed_at'         => now(),
                 'updated_at'          => now()
             ] );
 
-            // Log activity
+            // Store rejection reason in activity log instead
             DB::table( 'activity_logs' )->insert( [
                 'user_id'     => auth()->id(),
                 'action'      => 'Timesheet Rejected',
                 'entity_type' => 'timesheet',
                 'entity_id'   => $id,
-                'new_values'  => json_encode( [ 'rejected_reason' => $request->rejected_reason ] ),
+                'new_values'  => json_encode( [ 'rejection_reason' => $request->rejection_reason ] ),
                 'ip_address'  => $request->ip(),
                 'user_agent'  => $request->userAgent(),
                 'created_at'  => now()
@@ -709,9 +627,9 @@ class AdminTimesheetManagementController extends Controller {
 
             // Notify freelancer
             DB::table( 'notifications' )->insert( [
-                'user_id'    => $timesheet->user_id,
+                'user_id'    => $timesheet->freelancer_id,
                 'title'      => 'Timesheet Rejected',
-                'message'    => "Your timesheet has been rejected. Reason: {$request->rejected_reason}",
+                'message'    => "Your timesheet has been rejected. Reason: {$request->rejection_reason}",
                 'type'       => 'Warning',
                 'action_url' => "/timesheets/{$id}",
                 'created_at' => now()
@@ -735,7 +653,7 @@ class AdminTimesheetManagementController extends Controller {
     }
 
     /**
-     * Delete timesheet (soft delete or hard delete based on status)
+     * Delete timesheet
      * DELETE /api/v1/admin/timesheets/{id}
      */
     public function destroy( $id ) {
@@ -845,13 +763,11 @@ class AdminTimesheetManagementController extends Controller {
                 'pending_timesheets'       => ( clone $query )->where( 't.status_id', 1 )->count(),
                 'approved_timesheets'      => ( clone $query )->where( 't.status_id', 2 )->count(),
                 'rejected_timesheets'      => ( clone $query )->where( 't.status_id', 3 )->count(),
-                'accepted_timesheets'      => ( clone $query )->where( 't.status_id', 4 )->count(),
+                'resubmitted_timesheets'   => ( clone $query )->where( 't.status_id', 4 )->count(),
+                'payment_requested'        => ( clone $query )->where( 't.status_id', 5 )->count(),
                 'total_hours'              => ( clone $query )->sum( 't.total_hours' ),
                 'total_amount'             => ( clone $query )->sum( 't.total_amount' ),
                 'pending_payment_requests' => DB::table( 'payment_requests' )
-                                                ->where( 'status', 'Pending' )
-                                                ->count(),
-                'pending_company_payments' => DB::table( 'payments' )
                                                 ->where( 'status', 'Pending' )
                                                 ->count()
             ];
@@ -895,7 +811,7 @@ class AdminTimesheetManagementController extends Controller {
                            'u.email as freelancer_email',
                            'cd.company_name'
                        )
-                       ->orderBy( 'pr.requested_at', 'desc' );
+                       ->orderBy( 'pr.created_at', 'desc' );
 
             // Filter by status
             if ( $request->has( 'status' ) ) {
@@ -920,14 +836,14 @@ class AdminTimesheetManagementController extends Controller {
     }
 
     /**
-     * Process freelancer payment
+     * Process freelancer payment (FIXED - corrected column names)
      * POST /api/v1/admin/payment-requests/{requestId}/process
      */
     public function processFreelancerPayment( Request $request, $requestId ) {
         $validator = Validator::make( $request->all(), [
             'transaction_id' => 'required|string|max:255',
             'payment_method' => 'required|string|max:100',
-            'payment_notes'  => 'nullable|string|max:1000'
+            'admin_notes'  => 'nullable|string|max:1000'
         ] );
 
         if ( $validator->fails() ) {
@@ -967,14 +883,14 @@ class AdminTimesheetManagementController extends Controller {
                   'status'        => 'Completed',
                   'processed_at'  => now(),
                   'processed_by'  => Auth::id(),
-                  'payment_notes' => $request->payment_notes,
+                  'admin_notes'   => $request->admin_notes,
                   'updated_at'    => now()
               ] );
 
             // Create or update payment record
             $payment = DB::table( 'payments' )
                          ->where( 'invoice_id', $paymentRequest->invoice_id )
-                         ->where( 'payment_type', 'Freelancer Payment' )
+                         ->where( 'payment_type', 'Platform_to_Freelancer')
                          ->first();
 
             if ( $payment ) {
@@ -984,19 +900,20 @@ class AdminTimesheetManagementController extends Controller {
                       'status'         => 'Completed',
                       'transaction_id' => $request->transaction_id,
                       'payment_method' => $request->payment_method,
-                      'paid_at'        => now(),
+                      'payment_date'   => now(),
                       'updated_at'     => now()
                   ] );
             } else {
                 DB::table( 'payments' )->insert( [
                     'invoice_id'     => $paymentRequest->invoice_id,
                     'timesheet_id'   => $paymentRequest->timesheet_id,
-                    'amount'         => $paymentRequest->requested_amount,
-                    'payment_type'   => 'Freelancer Payment',
+                    'payment_request_id' => $requestId,
+                    'amount'         => $paymentRequest->amount,
+                    'payment_type'   => 'Platform_to_Freelancer',
                     'status'         => 'Completed',
                     'transaction_id' => $request->transaction_id,
                     'payment_method' => $request->payment_method,
-                    'paid_at'        => now(),
+                    'payment_date'   => now(),
                     'created_at'     => now(),
                     'updated_at'     => now()
                 ] );
@@ -1011,18 +928,20 @@ class AdminTimesheetManagementController extends Controller {
                 DB::table( 'freelancer_earnings' )
                   ->where( 'freelancer_id', $paymentRequest->freelancer_id )
                   ->update( [
-                      'pending_amount' => DB::raw( 'pending_amount - ' . $paymentRequest->requested_amount ),
-                      'total_paid'     => DB::raw( 'total_paid + ' . $paymentRequest->requested_amount ),
-                      'updated_at'     => now()
+                      'pending_amount'    => DB::raw( 'pending_amount - ' . $paymentRequest->amount ),
+                      'completed_amount'  => DB::raw( 'completed_amount + ' . $paymentRequest->amount ),
+                      'last_payment_date' => now(),
+                      'updated_at'        => now()
                   ] );
             } else {
                 DB::table( 'freelancer_earnings' )->insert( [
-                    'freelancer_id'  => $paymentRequest->freelancer_id,
-                    'total_earned'   => $paymentRequest->requested_amount,
-                    'total_paid'     => $paymentRequest->requested_amount,
-                    'pending_amount' => 0,
-                    'created_at'     => now(),
-                    'updated_at'     => now()
+                    'freelancer_id'    => $paymentRequest->freelancer_id,
+                    'total_earned'     => $paymentRequest->amount,
+                    'completed_amount' => $paymentRequest->amount,
+                    'pending_amount'   => 0,
+                    'last_payment_date' => now(),
+                    'created_at'       => now(),
+                    'updated_at'       => now()
                 ] );
             }
 
@@ -1031,8 +950,8 @@ class AdminTimesheetManagementController extends Controller {
                 'user_id'    => $paymentRequest->freelancer_id,
                 'title'      => 'Payment Completed',
                 'message'    => 'Your payment has been processed successfully',
-                'type'       => 'Payment',
-                'action_url' => '/freelancer/payments/history',
+                'type'       => 'Success',
+                'action_url' => '/freelancer/earnings/overview',
                 'is_read'    => false,
                 'created_at' => now()
             ] );
@@ -1088,6 +1007,7 @@ class AdminTimesheetManagementController extends Controller {
                            'cd.company_name',
                            'proj.project_title'
                        )
+                       ->where( 'p.payment_type', 'Company_to_Platform' )
                        ->where( 'p.status', 'Pending' )
                        ->orderBy( 'p.created_at', 'desc' );
 
@@ -1138,11 +1058,14 @@ class AdminTimesheetManagementController extends Controller {
                 ], 404 );
             }
 
-            // Update payment status to approved
+            // Update payment status to completed
             DB::table( 'payments' )
               ->where( 'payment_id', $paymentId )
               ->update( [
-                  'status'     => 'Approved',
+                  'status'     => 'Completed',
+                  'verified_by' => Auth::id(),
+                  'verified_at' => now(),
+                  'verification_notes' => $request->verification_notes,
                   'updated_at' => now()
               ] );
 
@@ -1195,8 +1118,7 @@ class AdminTimesheetManagementController extends Controller {
                              't.end_date',
                              't.total_hours',
                              'cd.company_name',
-                             'cd.company_address',
-                             'cd.company_email',
+                             'cd.headquarters as company_address',
                              DB::raw( "CONCAT(ud.first_name, ' ', ud.last_name) as freelancer_name" ),
                              'u.email as freelancer_email',
                              'ud.address as freelancer_address',

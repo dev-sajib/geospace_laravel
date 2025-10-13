@@ -17,17 +17,8 @@ return new class extends Migration
             $table->string('page_visited', 500)->nullable();
             $table->integer('session_duration')->nullable();
             $table->timestamp('created_at')->useCurrent();
-
-            $table->foreign('user_id')
-                  ->references('user_id')
-                  ->on('users')
-                  ->onDelete('set null');
             
-            $table->foreign('role_id')
-                  ->references('role_id')
-                  ->on('roles')
-                  ->onDelete('restrict');
-            
+            // Indexes only - no foreign keys for logging tables
             $table->index('user_id');
             $table->index('role_id');
             $table->index('created_at');
@@ -44,11 +35,10 @@ return new class extends Migration
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->timestamp('created_at')->useCurrent();
-
-            $table->foreign('user_id')
-                  ->references('user_id')
-                  ->on('users')
-                  ->onDelete('set null');
+            
+            // Index only - no foreign key for logging table
+            $table->index('user_id');
+            $table->index('created_at');
         });
     }
 

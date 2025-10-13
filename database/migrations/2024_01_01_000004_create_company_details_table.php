@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('company_details', function (Blueprint $table) {
-            $table->id('company_id');
-            $table->unsignedBigInteger('user_id');
+            $table->integer('company_id')->autoIncrement();
+            $table->integer('user_id');
             $table->string('company_name', 255);
             $table->string('company_type', 100)->nullable();
             $table->string('industry', 100)->nullable();

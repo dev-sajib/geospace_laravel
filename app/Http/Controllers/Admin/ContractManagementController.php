@@ -37,6 +37,8 @@ class ContractManagementController extends Controller
                            'cd.company_name',
                            'cu.email as company_email',
                            'fu.email as freelancer_email',
+                           'fud.hourly_rate as hourly_rate',
+                           'c.status as status',
                            DB::raw("CONCAT(fud.first_name, ' ', fud.last_name) as freelancer_name"),
                            'fud.profile_image as freelancer_image'
                        );

@@ -9,20 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('contracts', function (Blueprint $table) {
-            $table->id('contract_id');
-            $table->unsignedBigInteger('project_id');
-            $table->unsignedBigInteger('freelancer_id');
-            $table->unsignedBigInteger('company_id');
+            $table->integer('contract_id')->autoIncrement();
+            $table->integer('project_id');
+            $table->integer('freelancer_id');
+            $table->integer('company_id');
             $table->string('contract_title', 255);
             $table->text('contract_description')->nullable();
-            $table->date('start_date');
+            $table->decimal('hourly_rate', 10, 2)->nullable();
+            $table->decimal('total_amount', 12, 2)->nullable();
+            $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
-            $table->decimal('contract_value', 12, 2);
-            $table->enum('payment_terms', ['Fixed Price', 'Hourly', 'Milestone-based'])->default('Fixed Price');
-            $table->enum('status', ['Active', 'Completed', 'Terminated', 'On Hold'])->default('Active');
-            $table->text('terms_and_conditions')->nullable();
-            $table->string('contract_document', 500)->nullable();
-            $table->timestamp('signed_at')->nullable();
+            $table->enum('status', ['Pending', 'Active', 'Completed', 'Cancelled', 'Disputed'])->default('Pending');
+            $table->string('payment_terms', 255)->nullable();
+            $table->json('milestones')->nullable();
             $table->timestamps();
 
             $table->foreign('project_id')
@@ -36,14 +35,14 @@ return new class extends Migration
                   ->onDelete('cascade');
             
             $table->foreign('company_id')
-                  ->references('user_id')
-                  ->on('users')
+                  ->references('company_id')
+                  ->on('company_details')
                   ->onDelete('cascade');
             
-            $table->index('project_id');
-            $table->index('freelancer_id');
-            $table->index('company_id');
-            $table->index('status');
+            $table->index('project_id', 'idx_contracts_project_id');
+            $table->index('freelancer_id', 'idx_contracts_freelancer_id');
+            $table->index('company_id', 'idx_contracts_company_id');
+            $table->index('status', 'idx_contracts_status');
         });
     }
 

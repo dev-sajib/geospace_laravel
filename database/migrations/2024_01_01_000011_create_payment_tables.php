@@ -9,15 +9,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payment_requests', function (Blueprint $table) {
-            $table->id('request_id');
-            $table->unsignedBigInteger('timesheet_id');
-            $table->unsignedBigInteger('freelancer_id');
-            $table->decimal('requested_amount', 12, 2);
-            $table->text('request_notes')->nullable();
-            $table->enum('status', ['Pending', 'Approved', 'Rejected', 'Paid'])->default('Pending');
-            $table->timestamp('requested_at')->useCurrent();
+            $table->integer('request_id')->autoIncrement();
+            $table->integer('timesheet_id');
+            $table->integer('freelancer_id');
+            $table->integer('invoice_id')->nullable();
+            $table->decimal('amount', 12, 2);
+            $table->enum('status', ['Pending', 'Approved', 'Rejected', 'Processing', 'Completed'])->default('Pending');
+            $table->integer('processed_by')->nullable();
             $table->timestamp('processed_at')->nullable();
-            $table->unsignedBigInteger('processed_by')->nullable();
+            $table->text('admin_notes')->nullable();
+            $table->text('rejection_reason')->nullable();
+            $table->timestamps();
 
             $table->foreign('timesheet_id')
                   ->references('timesheet_id')
@@ -29,27 +31,36 @@ return new class extends Migration
                   ->on('users')
                   ->onDelete('cascade');
             
+            $table->foreign('invoice_id')
+                  ->references('invoice_id')
+                  ->on('invoices')
+                  ->onDelete('set null');
+            
             $table->foreign('processed_by')
                   ->references('user_id')
                   ->on('users')
                   ->onDelete('set null');
             
-            $table->index('timesheet_id');
-            $table->index('freelancer_id');
-            $table->index('status');
+            $table->index('timesheet_id', 'idx_payment_requests_timesheet');
+            $table->index('freelancer_id', 'idx_payment_requests_freelancer');
+            $table->index('status', 'idx_payment_requests_status');
         });
 
         Schema::create('payments', function (Blueprint $table) {
-            $table->id('payment_id');
-            $table->unsignedBigInteger('invoice_id')->nullable();
-            $table->unsignedBigInteger('timesheet_id');
-            $table->decimal('payment_amount', 12, 2);
-            $table->date('payment_date');
-            $table->enum('payment_method', ['Bank Transfer', 'PayPal', 'Stripe', 'Check', 'Other'])->default('Bank Transfer');
-            $table->string('transaction_id', 255)->nullable();
+            $table->integer('payment_id')->autoIncrement();
+            $table->integer('invoice_id')->nullable();
+            $table->integer('timesheet_id')->nullable();
+            $table->integer('payment_request_id')->nullable();
+            $table->enum('payment_type', ['Company_to_Platform', 'Platform_to_Freelancer']);
+            $table->decimal('amount', 12, 2);
+            $table->string('currency', 3)->default('CAD');
             $table->enum('status', ['Pending', 'Completed', 'Failed', 'Refunded'])->default('Pending');
-            $table->text('payment_notes')->nullable();
-            $table->string('payment_receipt', 500)->nullable();
+            $table->string('transaction_id', 255)->nullable();
+            $table->string('payment_method', 100)->nullable();
+            $table->timestamp('payment_date')->nullable();
+            $table->integer('verified_by')->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->text('verification_notes')->nullable();
             $table->timestamps();
 
             $table->foreign('invoice_id')
@@ -60,41 +71,27 @@ return new class extends Migration
             $table->foreign('timesheet_id')
                   ->references('timesheet_id')
                   ->on('timesheets')
-                  ->onDelete('cascade');
-            
-            $table->index('invoice_id');
-            $table->index('timesheet_id');
-            $table->index('status');
-            $table->index('transaction_id');
-        });
-
-        Schema::create('freelancer_earnings', function (Blueprint $table) {
-            $table->id('earning_id');
-            $table->unsignedBigInteger('freelancer_id');
-            $table->unsignedBigInteger('payment_id')->nullable();
-            $table->decimal('amount', 12, 2);
-            $table->date('earning_date');
-            $table->enum('earning_type', ['Timesheet Payment', 'Bonus', 'Refund', 'Other'])->default('Timesheet Payment');
-            $table->text('description')->nullable();
-            $table->timestamps();
-
-            $table->foreign('freelancer_id')
-                  ->references('user_id')
-                  ->on('users')
-                  ->onDelete('cascade');
-            
-            $table->foreign('payment_id')
-                  ->references('payment_id')
-                  ->on('payments')
                   ->onDelete('set null');
             
-            $table->index('freelancer_id');
+            $table->foreign('payment_request_id')
+                  ->references('request_id')
+                  ->on('payment_requests')
+                  ->onDelete('set null');
+            
+            $table->foreign('verified_by')
+                  ->references('user_id')
+                  ->on('users')
+                  ->onDelete('set null');
+            
+            $table->index('invoice_id', 'idx_payments_invoice');
+            $table->index('timesheet_id', 'idx_payments_timesheet');
+            $table->index('status', 'idx_payments_status');
+            $table->index('transaction_id', 'idx_payments_transaction');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('freelancer_earnings');
         Schema::dropIfExists('payments');
         Schema::dropIfExists('payment_requests');
     }

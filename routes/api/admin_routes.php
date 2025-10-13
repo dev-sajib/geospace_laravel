@@ -28,6 +28,7 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::get('details', 'getUserDetails')->name('details');
         Route::post('send-verification-request', 'sendVerificationRequest')->name('send.verification');
         Route::post('final-verification', 'finalVerification')->name('final.verification');
+        Route::post('update-status', 'updateUserStatus')->name('update.status');
     });
 
     // CONTRACT MANAGEMENT

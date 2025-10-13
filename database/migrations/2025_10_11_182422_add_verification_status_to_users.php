@@ -9,11 +9,15 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-            $table->enum('verification_status', ['pending', 'verified', 'rejected'])->default('pending')->after('is_verified');
-        });
+    public function up(): void {
+        Schema::table( 'users', function ( Blueprint $table ) {
+            $table->enum( 'verification_status', [
+                'pending',
+                'awaiting',
+                'verified',
+                'rejected'
+            ] )->default( 'pending' )->after( 'is_verified' );
+        } );
     }
 
     /**
