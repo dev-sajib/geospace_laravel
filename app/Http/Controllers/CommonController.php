@@ -76,7 +76,7 @@ class CommonController extends Controller
                         'Success' => false
                     ], 403);
                 }
-                
+
                 if ($user->verification_status === 'rejected') {
                     return response()->json([
                         'StatusCode' => 403,
@@ -211,7 +211,7 @@ class CommonController extends Controller
                 'UserPosition' => 'required|string|max:100',
                 'RoleId' => 'required|integer|exists:roles,role_id',
                 'AuthProvider' => 'nullable|string|max:50',
-                
+
                 // User details from step 2 (matching user_details schema)
                 'FirstName' => 'required|string|max:100',
                 'LastName' => 'required|string|max:100',
@@ -335,7 +335,7 @@ class CommonController extends Controller
                 'RoleId' => 'required|integer|exists:roles,role_id',
                 'UserPosition' => 'nullable|string|max:100',
                 'AuthProvider' => 'nullable|string|max:50',
-                
+
                 // Company details matching schema
                 'CompanyName' => 'required|string|max:255',
                 'CompanyType' => 'nullable|string|max:100',
@@ -474,10 +474,10 @@ class CommonController extends Controller
             $extension = $file->getClientOriginalExtension();
             $mimeType = $file->getMimeType();
             $fileSize = $file->getSize();
-            
+
             // Generate unique filename
             $storedFileName = time() . '_' . uniqid() . '.' . $extension;
-            
+
             // Store in public/uploads
             $path = $file->storeAs('uploads', $storedFileName, 'public');
             $fullPath = 'storage/' . $path;
@@ -526,7 +526,7 @@ class CommonController extends Controller
     {
         try {
             $user = auth()->user();
-            
+
             if (!$user) {
                 return response()->json(
                     MessageHelper::unauthorized('User not authenticated'),
@@ -608,7 +608,7 @@ class CommonController extends Controller
     {
         try {
             JWTAuth::invalidate(JWTAuth::getToken());
-            
+
             return response()->json(
                 MessageHelper::success('Logged out successfully')
             );
@@ -617,93 +617,6 @@ class CommonController extends Controller
             Log::error('Logout error: ' . $e->getMessage());
             return response()->json(
                 MessageHelper::error('Logout failed'),
-                500
-            );
-        }
-    }
-
-    /**
-     * Get menus by role ID
-     * Fixed to use correct table name from schema
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function getMenusByRoleId(Request $request): JsonResponse
-    {
-        try {
-            $roleId = $request->query('roleId');
-
-            if (!$roleId) {
-                return response()->json(
-                    MessageHelper::error('RoleId is required'),
-                    400
-                );
-            }
-
-            // Get all menus with permissions for the role
-            // Using 'role_permissions' table as per schema
-            $allMenus = DB::table('menu_items as m')
-                ->join('role_permissions as rp', 'm.menu_id', '=', 'rp.menu_id')
-                ->where('rp.role_id', $roleId)
-                ->where('rp.can_view', true)
-                ->where('m.is_active', true)
-                ->select(
-                    'm.*', 
-                    'rp.can_view',
-                    'rp.can_create',
-                    'rp.can_edit', 
-                    'rp.can_delete'
-                )
-                ->orderBy('m.sort_order')
-                ->get();
-
-            // Separate parent and child menus
-            $parentMenus = $allMenus->whereNull('parent_menu_id');
-            $childMenus = $allMenus->whereNotNull('parent_menu_id');
-
-            // Build hierarchical structure
-            $structuredMenus = [];
-            foreach ($parentMenus as $parent) {
-                $parentArray = [
-                    'menu_id' => $parent->menu_id,
-                    'menu_name' => $parent->menu_name,
-                    'menu_url' => $parent->menu_url,
-                    'menu_icon' => $parent->menu_icon,
-                    'sort_order' => $parent->sort_order,
-                    'can_view' => (bool)$parent->can_view,
-                    'can_create' => (bool)$parent->can_create,
-                    'can_edit' => (bool)$parent->can_edit,
-                    'can_delete' => (bool)$parent->can_delete
-                ];
-
-                // Get children for this parent
-                $children = $childMenus->where('parent_menu_id', $parent->menu_id)->values();
-                $parentArray['sub_links'] = $children->map(function($child) {
-                    return [
-                        'menu_id' => $child->menu_id,
-                        'menu_name' => $child->menu_name,
-                        'menu_url' => $child->menu_url,
-                        'menu_icon' => $child->menu_icon,
-                        'sort_order' => $child->sort_order,
-                        'can_view' => (bool)$child->can_view,
-                        'can_create' => (bool)$child->can_create,
-                        'can_edit' => (bool)$child->can_edit,
-                        'can_delete' => (bool)$child->can_delete
-                    ];
-                })->toArray();
-
-                $structuredMenus[] = $parentArray;
-            }
-
-            return response()->json(
-                MessageHelper::success('Menus retrieved successfully', $structuredMenus)
-            );
-
-        } catch (\Exception $e) {
-            Log::error('Get menus error: ' . $e->getMessage());
-            return response()->json(
-                MessageHelper::error('Failed to retrieve menus: ' . $e->getMessage()),
                 500
             );
         }
@@ -719,7 +632,7 @@ class CommonController extends Controller
     {
         try {
             $user = auth()->user();
-            
+
             if (!$user) {
                 return response()->json(
                     MessageHelper::unauthorized('User not authenticated'),
@@ -731,7 +644,7 @@ class CommonController extends Controller
             $isRead = $request->query('is_read'); // null = all, true = read, false = unread
 
             $query = Notification::where('user_id', $user->user_id);
-            
+
             if ($isRead !== null) {
                 $query->where('is_read', filter_var($isRead, FILTER_VALIDATE_BOOLEAN));
             }
@@ -823,7 +736,7 @@ class CommonController extends Controller
     {
         try {
             $user = auth()->user();
-            
+
             Notification::where('user_id', $user->user_id)
                        ->where('is_read', false)
                        ->update([

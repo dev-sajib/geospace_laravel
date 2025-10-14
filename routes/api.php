@@ -53,9 +53,6 @@ Route::prefix( 'v1' )->middleware( [ 'auth:api' ] )->group( function () {
         Route::get( 'me', 'me' )->name( 'api.user.profile' );
         Route::post( 'logout', 'logout' )->name( 'api.logout' );
 
-        // Menu & Navigation
-        Route::get( 'GetMenusByRoleId', 'getMenusByRoleId' )->name( 'api.menus.role' );
-
         // Notifications
         Route::get( 'Notifications', 'notifications' )->name( 'api.notifications.index' );
         Route::post( 'UpdateNotification', 'updateNotification' )->name( 'api.notifications.update' );
