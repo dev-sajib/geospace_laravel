@@ -24,21 +24,29 @@ class FreelancerTimesheetController extends Controller {
             $query = DB::table( 'timesheets as t' )
                        ->join( 'contracts as c', 't.contract_id', '=', 'c.contract_id' )
                        ->join( 'projects as p', 't.project_id', '=', 'p.project_id' )
-                       ->join( 'company_details as cd', 't.company_id', '=', 'cd.user_id' )
+                       ->join( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                        ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
                        ->where( 't.freelancer_id', $freelancerId )
                        ->select(
                            't.*',
-                           'p.project_name as project_title',
+                           'p.project_title',
                            'cd.company_name',
                            'ts.status_name',
-                           'c.contract_value as hourly_rate'
+                           'c.hourly_rate'
                        )
                        ->orderBy( 't.created_at', 'desc' );
 
-            // Filter by status
+            // Filter by status (approved, rejected, pending)
             if ( $request->has( 'status' ) ) {
-                $query->where( 'ts.status_name', $request->status );
+                $statusParam = strtolower( $request->status );
+
+                if ( $statusParam === 'approved' ) {
+                    $query->where( 'ts.status_name', 'Approved' );
+                } elseif ( $statusParam === 'rejected' ) {
+                    $query->where( 'ts.status_name', 'Rejected' );
+                } elseif ( $statusParam === 'pending' ) {
+                    $query->where( 'ts.status_name', 'Pending' );
+                }
             }
 
             $timesheets = $query->paginate( 15 );
@@ -343,16 +351,16 @@ class FreelancerTimesheetController extends Controller {
             $timesheet = DB::table( 'timesheets as t' )
                            ->join( 'contracts as c', 't.contract_id', '=', 'c.contract_id' )
                            ->join( 'projects as p', 't.project_id', '=', 'p.project_id' )
-                           ->join( 'company_details as cd', 't.company_id', '=', 'cd.user_id' )
+                           ->join( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                            ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
                            ->where( 't.timesheet_id', $id )
                            ->where( 't.freelancer_id', $freelancerId )
                            ->select(
                                't.*',
-                               'p.project_name as project_title',
+                               'p.project_title',
                                'cd.company_name',
                                'ts.status_name',
-                               'c.contract_value as hourly_rate'
+                               'c.hourly_rate'
                            )
                            ->first();
 
@@ -476,7 +484,7 @@ class FreelancerTimesheetController extends Controller {
 
             // Update timesheet status to submitted
             $submittedStatus = DB::table( 'timesheet_status' )
-                                 ->where( 'status_name', 'Submitted' )
+                                 ->where( 'status_name', 'Pending' )
                                  ->first();
 
             $totalAmount = $totalHours * $timesheet->hourly_rate;
@@ -496,14 +504,14 @@ class FreelancerTimesheetController extends Controller {
 
             // Notify company
             $companyUser = DB::table( 'company_details' )
-                             ->where( 'user_id', $timesheet->company_id )
+                             ->where( 'company_id', $timesheet->company_id )
                              ->value( 'user_id' );
 
             DB::table( 'notifications' )->insert( [
                 'user_id'    => $companyUser,
                 'title'      => 'Timesheet Resubmitted',
                 'message'    => 'A freelancer has resubmitted a timesheet for review',
-                'type'       => 'Timesheet',
+                'type'       => 'Info',
                 'action_url' => "/company/timesheets/{$id}",
                 'is_read'    => false,
                 'created_at' => now()
@@ -614,7 +622,7 @@ class FreelancerTimesheetController extends Controller {
                     'user_id'    => $adminId,
                     'title'      => 'Payment Request',
                     'message'    => 'A freelancer has requested payment for timesheet',
-                    'type'       => 'Payment',
+                    'type'       => 'Info',
                     'action_url' => "/admin/payment-requests",
                     'is_read'    => false,
                     'created_at' => now()
@@ -662,7 +670,7 @@ class FreelancerTimesheetController extends Controller {
                           ->join( 'timesheets as t', 'p.timesheet_id', '=', 't.timesheet_id' )
                           ->join( 'invoices as i', 'p.invoice_id', '=', 'i.invoice_id' )
                           ->join( 'projects as proj', 't.project_id', '=', 'proj.project_id' )
-                          ->join( 'company_details as cd', 't.company_id', '=', 'cd.user_id' )
+                          ->join( 'company_details as cd', 't.company_id', '=', 'cd.company_id' )
                           ->where( 't.freelancer_id', $freelancerId )
                           ->select(
                               'p.*',
