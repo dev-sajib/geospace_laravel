@@ -3,42 +3,39 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Freelancer\HomeController as FreelancerHomeController;
 use App\Http\Controllers\Freelancer\FreelancerTimesheetController;
-
-/*
-|--------------------------------------------------------------------------
-| Freelancer Routes
-|--------------------------------------------------------------------------
-|
-| All routes for Freelancer role users
-| Prefix: /api/v1/freelancer
-| Middleware: auth:api (or auth:sanctum based on your auth system)
-|
-*/
+use App\Http\Controllers\Freelancer\ProfileController;
 
 Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->group(function () {
 
     // DASHBOARD & PROFILE
     Route::controller(FreelancerHomeController::class)->group(function () {
         Route::get('UserList', 'userList')->name('users.list');
-        // Add more dashboard/profile routes here as needed
+    });
+
+    // PROFILE MANAGEMENT
+    Route::controller(ProfileController::class)->prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', 'getProfile')->name('get');
+        Route::put('/', 'updateProfile')->name('update');
+        Route::post('/work-experience', 'addWorkExperience')->name('work-experience.add');
+        Route::delete('/work-experience/{id}', 'deleteWorkExperience')->name('work-experience.delete');
+        Route::post('/education', 'addEducation')->name('education.add');
+        Route::delete('/education/{id}', 'deleteEducation')->name('education.delete');
+        Route::post('/portfolio', 'addPortfolio')->name('portfolio.add');
+        Route::delete('/portfolio/{id}', 'deletePortfolio')->name('portfolio.delete');
+        Route::post('/certification', 'addCertification')->name('certification.add');
+        Route::delete('/certification/{id}', 'deleteCertification')->name('certification.delete');
+        Route::put('/expertise-skills', 'updateExpertiseSkills')->name('expertise-skills.update');
     });
 
     // TIMESHEET MANAGEMENT
     Route::controller(FreelancerTimesheetController::class)->prefix('timesheets')->name('timesheets.')->group(function () {
-        // List & Dropdown
         Route::get('/', 'index')->name('index');
         Route::get('dropdown-data', 'getDropdownData')->name('dropdown');
         Route::get('get-projects', 'getProjects')->name('get.projects');
-
-        // CRUD Operations
         Route::post('/', 'store')->name('store');
         Route::get('{id}', 'show')->name('show');
-
-        // Timesheet Actions
         Route::put('{id}/resubmit', 'resubmit')->name('resubmit');
         Route::post('{id}/request-payment', 'requestPayment')->name('request.payment');
-
-        // Payment History
         Route::get('payment-history', 'paymentHistory')->name('payment.history');
     });
 });
