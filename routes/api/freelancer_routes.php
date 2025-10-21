@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Freelancer\HomeController as FreelancerHomeController;
 use App\Http\Controllers\Freelancer\FreelancerTimesheetController;
 use App\Http\Controllers\Freelancer\ProfileController;
+use App\Http\Controllers\DisputeController;
 
 Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->group(function () {
 
@@ -41,5 +42,11 @@ Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->
         Route::put('{id}/resubmit', 'resubmit')->name('resubmit');
         Route::post('{id}/request-payment', 'requestPayment')->name('request.payment');
         Route::get('payment-history', 'paymentHistory')->name('payment.history');
+    });
+
+    // DISPUTE TICKET MANAGEMENT
+    Route::controller(DisputeController::class)->prefix('dispute')->name('dispute.')->group(function () {
+        Route::get('freelancer-contracts/{freelancerId}', 'getFreelancerContracts')->name('freelancer.contracts');
+        Route::post('tickets/submit', 'submitTicket')->name('tickets.submit');
     });
 });

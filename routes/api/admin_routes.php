@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ContractManagementController;
 use App\Http\Controllers\Admin\AdminTimesheetManagementController;
+use App\Http\Controllers\DisputeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,5 +80,12 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
     // INVOICE MANAGEMENT
     Route::prefix('invoices')->name('invoices.')->group(function () {
         Route::get('{invoiceId}/download', [AdminTimesheetManagementController::class, 'downloadInvoice'])->name('download');
+    });
+
+    // DISPUTE TICKET MANAGEMENT
+    Route::controller(DisputeController::class)->prefix('dispute')->name('dispute.')->group(function () {
+        Route::get('tickets/list', 'getDisputeTicketsList')->name('tickets.list');
+        Route::post('tickets/update-status', 'updateTicketStatus')->name('tickets.update.status');
+        Route::get('tickets/{ticketId}', 'getTicketDetails')->name('tickets.details');
     });
 });
