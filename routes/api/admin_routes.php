@@ -88,4 +88,14 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::post('tickets/update-status', 'updateTicketStatus')->name('tickets.update.status');
         Route::get('tickets/{ticketId}', 'getTicketDetails')->name('tickets.details');
     });
+
+    // CHAT SYSTEM
+    Route::controller(\App\Http\Controllers\Api\Admin\ChatController::class)->prefix('chat')->name('chat.')->group(function () {
+        Route::get('conversations', 'getConversations')->name('conversations.list');
+        Route::get('conversations/{conversationId}/messages', 'getMessages')->name('messages.list');
+        Route::post('conversations/{conversationId}/start', 'startChatting')->name('conversations.start');
+        Route::post('conversations/{conversationId}/messages', 'sendMessage')->name('messages.send');
+        Route::post('conversations/{conversationId}/typing', 'sendTyping')->name('typing.send');
+        Route::post('conversations/{conversationId}/close', 'closeConversation')->name('conversations.close');
+    });
 });

@@ -49,4 +49,14 @@ Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->
         Route::get('freelancer-contracts/{freelancerId}', 'getFreelancerContracts')->name('freelancer.contracts');
         Route::post('tickets/submit', 'submitTicket')->name('tickets.submit');
     });
+
+    // CHAT SYSTEM
+    Route::controller(\App\Http\Controllers\Api\ChatController::class)->prefix('chat')->name('chat.')->group(function () {
+        Route::post('conversations', 'createConversation')->name('conversations.create');
+        Route::get('conversations', 'getConversations')->name('conversations.list');
+        Route::get('conversations/{conversationId}/messages', 'getMessages')->name('messages.list');
+        Route::post('conversations/{conversationId}/messages', 'sendMessage')->name('messages.send');
+        Route::post('conversations/{conversationId}/typing', 'sendTyping')->name('typing.send');
+        Route::delete('conversations/{conversationId}', 'deleteConversation')->name('conversations.delete');
+    });
 });
