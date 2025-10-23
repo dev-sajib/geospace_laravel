@@ -235,7 +235,7 @@ class ChatController extends Controller
     public function sendMessage(Request $request, $conversationId): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'content' => 'required|string|max:2000',
+            'content' => 'nullable|string|max:2000',
             'attachment' => 'nullable|image|max:2048',
         ]);
 
@@ -244,6 +244,15 @@ class ChatController extends Controller
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Validate that at least content or attachment is provided
+        if (empty($request->content) && !$request->hasFile('attachment')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => ['message' => ['Please provide either a message or an attachment']]
             ], 422);
         }
 
@@ -288,7 +297,7 @@ class ChatController extends Controller
                 'conversation_id' => $conversationId,
                 'sender_id' => $admin->user_id,
                 'sender_type' => get_class($admin),
-                'content' => $request->content,
+                'content' => $request->content ?: '',
                 'attachment_path' => $attachmentPath,
                 'attachment_name' => $attachmentName,
                 'message_type' => $messageType,
@@ -428,25 +437,12 @@ class ChatController extends Controller
             return 'Unknown';
         }
 
-        // If it's a User model, get name from UserDetail
-        if ($sender instanceof \App\Models\User) {
+        // Both User and Admin models have userDetails relationship
+        if ($sender instanceof \App\Models\User || $sender instanceof \App\Models\Admin) {
             $userDetail = $sender->userDetails;
             if ($userDetail) {
                 return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $sender->email;
             }
-            return $sender->email;
-        }
-
-        // If it's an Admin model, try to get name or email
-        if (method_exists($sender, 'name')) {
-            return $sender->name;
-        }
-        
-        if (method_exists($sender, 'UserName')) {
-            return $sender->UserName;
-        }
-        
-        if (method_exists($sender, 'email')) {
             return $sender->email;
         }
 
@@ -464,25 +460,12 @@ class ChatController extends Controller
 
         $participant = $customer->participant;
 
-        // If it's a User model, get name from UserDetail
-        if ($participant instanceof \App\Models\User) {
+        // Both User and Admin models have userDetails relationship
+        if ($participant instanceof \App\Models\User || $participant instanceof \App\Models\Admin) {
             $userDetail = $participant->userDetails;
             if ($userDetail) {
                 return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $participant->email;
             }
-            return $participant->email;
-        }
-
-        // If it's an Admin model, try to get name or email
-        if (method_exists($participant, 'name')) {
-            return $participant->name;
-        }
-        
-        if (method_exists($participant, 'UserName')) {
-            return $participant->UserName;
-        }
-        
-        if (method_exists($participant, 'email')) {
             return $participant->email;
         }
 
