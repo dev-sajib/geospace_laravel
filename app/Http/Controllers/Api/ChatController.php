@@ -295,7 +295,7 @@ class ChatController extends Controller
                 ->increment('unread_count');
 
             // Broadcast message
-            broadcast(new MessageSent($message));
+            broadcast(new MessageSent($message, $user));
 
             return response()->json([
                 'success' => true,

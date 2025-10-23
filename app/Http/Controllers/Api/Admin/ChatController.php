@@ -53,21 +53,21 @@ class ChatController extends Controller
                                  ->paginate($perPage);
 
             $conversationsData = $conversations->map(function ($conversation) {
-                $customer = $conversation->customer;
-                $supportAgent = $conversation->supportAgent();
+                $customerParticipant = $conversation->customer()->first();
+                $supportAgentParticipant = $conversation->supportAgent()->first();
                 $latestMessage = $conversation->latestMessage()->first();
-                
+
                 return [
                     'id' => $conversation->id,
                     'subject' => $conversation->subject,
                     'purpose' => $conversation->purpose,
                     'attachment_path' => $conversation->attachment_path,
                     'status' => $conversation->status,
-                    'customer_name' => $this->getCustomerName($customer),
-                    'customer_id' => $customer?->participant_id,
-                    'support_agent_name' => $supportAgent?->participant?->name ?? $supportAgent?->participant?->UserName ?? null,
-                    'support_agent_id' => $supportAgent?->participant_id,
-                    'unread_count' => $supportAgent?->unread_count ?? 0,
+                    'customer_name' => $this->getCustomerName($customerParticipant),
+                    'customer_id' => $customerParticipant?->participant_id,
+                    'support_agent_name' => $supportAgentParticipant?->participant?->name ?? $supportAgentParticipant?->participant?->UserName ?? null,
+                    'support_agent_id' => $supportAgentParticipant?->participant_id,
+                    'unread_count' => $supportAgentParticipant?->unread_count ?? 0,
                     'last_message_at' => $conversation->last_message_at?->toISOString(),
                     'latest_message_preview' => $latestMessage?->content ? substr($latestMessage->content, 0, 100) . '...' : null,
                     'created_at' => $conversation->created_at->toISOString(),
@@ -142,15 +142,15 @@ class ChatController extends Controller
             });
 
             // Get conversation details
-            $customer = $conversation->customer;
+            $customerParticipant = $conversation->customer()->first();
             $conversationData = [
                 'id' => $conversation->id,
                 'subject' => $conversation->subject,
                 'purpose' => $conversation->purpose,
                 'attachment_path' => $conversation->attachment_path,
                 'status' => $conversation->status,
-                'customer_name' => $this->getCustomerName($customer),
-                'customer_id' => $customer?->participant_id,
+                'customer_name' => $this->getCustomerName($customerParticipant),
+                'customer_id' => $customerParticipant?->participant_id,
                 'created_at' => $conversation->created_at->toISOString(),
             ];
 
@@ -201,16 +201,24 @@ class ChatController extends Controller
                 ]);
             }
 
+            // Auto-change status from 'open' to 'in_progress' when admin opens the conversation
+            if ($conversation->status === 'open') {
+                $conversation->update(['status' => 'in_progress']);
+
+                // Broadcast conversation update
+                broadcast(new ConversationUpdated($conversation));
+            }
+
             // Get conversation details
-            $customer = $conversation->customer;
+            $customerParticipant = $conversation->customer()->first();
             $conversationData = [
                 'id' => $conversation->id,
                 'subject' => $conversation->subject,
                 'purpose' => $conversation->purpose,
                 'attachment_path' => $conversation->attachment_path,
                 'status' => $conversation->status,
-                'customer_name' => $this->getCustomerName($customer),
-                'customer_id' => $customer?->participant_id,
+                'customer_name' => $this->getCustomerName($customerParticipant),
+                'customer_id' => $customerParticipant?->participant_id,
                 'created_at' => $conversation->created_at->toISOString(),
             ];
 
@@ -312,7 +320,7 @@ class ChatController extends Controller
                 ->increment('unread_count');
 
             // Broadcast message
-            broadcast(new MessageSent($message));
+            broadcast(new MessageSent($message, $admin));
             
             // Broadcast conversation update
             broadcast(new ConversationUpdated($conversation));

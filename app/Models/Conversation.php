@@ -82,16 +82,32 @@ class Conversation extends Model
     /**
      * Get the customer participant.
      */
-    public function customer()
+    public function customer(): HasMany
     {
-        return $this->participants()->where('role', 'customer')->first();
+        return $this->hasMany(ConversationParticipant::class)->where('role', 'customer');
     }
 
     /**
      * Get the support agent participant.
      */
-    public function supportAgent()
+    public function supportAgent(): HasMany
     {
-        return $this->participants()->where('role', 'support_agent')->first();
+        return $this->hasMany(ConversationParticipant::class)->where('role', 'support_agent');
+    }
+
+    /**
+     * Get the customer participant (single record helper).
+     */
+    public function getCustomerAttribute()
+    {
+        return $this->customer()->first();
+    }
+
+    /**
+     * Get the support agent participant (single record helper).
+     */
+    public function getSupportAgentAttribute()
+    {
+        return $this->supportAgent()->first();
     }
 }

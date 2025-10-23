@@ -864,7 +864,7 @@ class CommonController extends Controller
                     $stats = [
                         'OpenDisputes' => DB::table('dispute_tickets')->where('status_id', 1)->count(),
                         'AssignedDisputes' => DB::table('dispute_tickets')->where('assigned_to', $user->user_id)->whereIn('status_id', [1, 2])->count(),
-                        'ActiveChatSessions' => DB::table('chat_sessions')->where('support_agent_id', $user->user_id)->where('status', 'Active')->count()
+                        'ActiveChatConversations' => DB::table('conversations')->where('status', 'open')->count()
                     ];
                     break;
             }
