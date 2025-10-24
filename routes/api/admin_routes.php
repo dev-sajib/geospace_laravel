@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ContractManagementController;
 use App\Http\Controllers\Admin\AdminTimesheetManagementController;
+use App\Http\Controllers\Admin\AdminVideoSupportController;
 use App\Http\Controllers\DisputeController;
 
 /*
@@ -82,10 +83,27 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::get('{invoiceId}/download', [AdminTimesheetManagementController::class, 'downloadInvoice'])->name('download');
     });
 
+    // VIDEO SUPPORT MANAGEMENT
+    Route::controller(AdminVideoSupportController::class)->prefix('video-support')->name('video-support.')->group(function () {
+        Route::get('/', 'index')->name('list');
+        Route::get('{requestId}', 'show')->name('show');
+        Route::put('{requestId}', 'update')->name('update');
+    });
+
     // DISPUTE TICKET MANAGEMENT
     Route::controller(DisputeController::class)->prefix('dispute')->name('dispute.')->group(function () {
         Route::get('tickets/list', 'getDisputeTicketsList')->name('tickets.list');
         Route::post('tickets/update-status', 'updateTicketStatus')->name('tickets.update.status');
         Route::get('tickets/{ticketId}', 'getTicketDetails')->name('tickets.details');
+    });
+
+    // CHAT SYSTEM
+    Route::controller(\App\Http\Controllers\Api\Admin\ChatController::class)->prefix('chat')->name('chat.')->group(function () {
+        Route::get('conversations', 'getConversations')->name('conversations.list');
+        Route::get('conversations/{conversationId}/messages', 'getMessages')->name('messages.list');
+        Route::post('conversations/{conversationId}/start', 'startChatting')->name('conversations.start');
+        Route::post('conversations/{conversationId}/messages', 'sendMessage')->name('messages.send');
+        Route::post('conversations/{conversationId}/typing', 'sendTyping')->name('typing.send');
+        Route::post('conversations/{conversationId}/close', 'closeConversation')->name('conversations.close');
     });
 });

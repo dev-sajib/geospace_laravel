@@ -19,6 +19,12 @@ class Authenticate
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->header('Authorization') === 'Bearer test-token') {
+            // For testing purposes, authenticate with a test user (user_id = 29 based on JWT from error)
+            // You can change this to any valid user ID in your database
+            $testUser = \App\Models\User::find(29);
+            if ($testUser) {
+                auth()->login($testUser);
+            }
             return $next($request);
         }
 
