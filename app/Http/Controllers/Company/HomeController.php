@@ -7,11 +7,14 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Timesheet;
 use App\Models\Notification;
+use App\Models\CompanyDetail;
+use App\Models\UserDetail;
 use App\Helpers\MessageHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class HomeController extends Controller
 {
@@ -444,6 +447,186 @@ class HomeController extends Controller
                 MessageHelper::error('An error occurred: ' . $e->getMessage()),
                 500
             );
+        }
+    }
+
+    /**
+     * Get company profile information
+     *
+     * @return JsonResponse
+     */
+    public function getCompanyProfile(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            // Get company details
+            $companyDetails = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            // Get user details (for contact person information)
+            $userDetails = UserDetail::where('user_id', $user->user_id)->first();
+
+            if (!$companyDetails) {
+                return response()->json([
+                    'Success' => false,
+                    'Message' => 'Company profile not found. Please complete your profile setup.',
+                    'Data' => null
+                ], 404);
+            }
+
+            // Build contact person name, removing default placeholders
+            $contactPersonName = null;
+            if ($userDetails) {
+                $firstName = ($userDetails->first_name && $userDetails->first_name !== 'N/A') ? $userDetails->first_name : '';
+                $lastName = ($userDetails->last_name && $userDetails->last_name !== '-') ? $userDetails->last_name : '';
+                $contactPersonName = trim($firstName . ' ' . $lastName) ?: null;
+            }
+
+            $profileData = [
+                'company_id' => $companyDetails->company_id,
+                'company_name' => $companyDetails->company_name,
+                'company_type' => $companyDetails->company_type,
+                'industry' => $companyDetails->industry,
+                'company_size' => $companyDetails->company_size,
+                'website' => $companyDetails->website,
+                'description' => $companyDetails->description,
+                'founded_year' => $companyDetails->founded_year,
+                'headquarters' => $companyDetails->headquarters,
+                'logo' => $companyDetails->logo, // Return just the path, not full URL
+                'user_email' => $user->email,
+                'contact_person_name' => $contactPersonName,
+                'designation' => $userDetails->designation ?? $user->user_position ?? null,
+                'phone' => $userDetails->phone ?? null,
+                'city' => $userDetails->city ?? null,
+                'country' => $userDetails->country ?? null,
+            ];
+
+            return response()->json([
+                'Success' => true,
+                'Message' => 'Company profile retrieved successfully',
+                'Data' => $profileData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'Success' => false,
+                'Message' => 'Failed to retrieve company profile',
+                'Error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update company profile information
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function updateCompanyProfile(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            // Validation rules
+            $validator = Validator::make($request->all(), [
+                'company_name' => 'required|string|max:255',
+                'industry' => 'nullable|string|max:100',
+                'company_type' => 'nullable|string|max:100',
+                'company_size' => 'nullable|in:1-10,11-50,51-200,201-500,500+',
+                'website' => 'nullable|url|max:500',
+                'description' => 'nullable|string',
+                'founded_year' => 'nullable|integer|min:1800|max:' . date('Y'),
+                'headquarters' => 'nullable|string|max:255',
+                'logo' => 'nullable|string|max:500',
+                'contact_person_name' => 'nullable|string|max:200',
+                'designation' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'city' => 'nullable|string|max:100',
+                'country' => 'nullable|string|max:100',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'Success' => false,
+                    'Message' => 'Validation failed',
+                    'Errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // Update or create company details
+            $companyDetails = CompanyDetail::updateOrCreate(
+                ['user_id' => $user->user_id],
+                [
+                    'company_name' => $request->company_name,
+                    'company_type' => $request->company_type,
+                    'industry' => $request->industry,
+                    'company_size' => $request->company_size,
+                    'website' => $request->website,
+                    'description' => $request->description,
+                    'founded_year' => $request->founded_year,
+                    'headquarters' => $request->headquarters,
+                    'logo' => $request->logo,
+                ]
+            );
+
+            // Update user details if provided
+            if ($request->has('contact_person_name') || $request->has('designation') || $request->has('phone') || $request->has('city') || $request->has('country')) {
+                $nameParts = explode(' ', $request->contact_person_name ?? '', 2);
+                $firstName = $nameParts[0] ?? 'N/A';
+                $lastName = $nameParts[1] ?? '-';
+
+                // Build update data with required fields
+                $userDetailsData = [
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                ];
+
+                // Add optional fields only if they have values
+                if ($request->filled('designation')) {
+                    $userDetailsData['designation'] = $request->designation;
+                }
+                if ($request->filled('phone')) {
+                    $userDetailsData['phone'] = $request->phone;
+                }
+                if ($request->filled('city')) {
+                    $userDetailsData['city'] = $request->city;
+                }
+                if ($request->filled('country')) {
+                    $userDetailsData['country'] = $request->country;
+                }
+
+                UserDetail::updateOrCreate(
+                    ['user_id' => $user->user_id],
+                    $userDetailsData
+                );
+            }
+
+            // Update user position if designation is provided
+            if ($request->has('designation')) {
+                $user->user_position = $request->designation;
+                $user->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'Success' => true,
+                'Message' => 'Company profile updated successfully',
+                'Data' => [
+                    'company_id' => $companyDetails->company_id,
+                    'company_name' => $companyDetails->company_name,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'Success' => false,
+                'Message' => 'Failed to update company profile',
+                'Error' => $e->getMessage()
+            ], 500);
         }
     }
 }

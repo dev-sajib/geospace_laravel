@@ -27,6 +27,10 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
         Route::get('UpdateProfileList', 'updateProfileList')->name('profile.list');
         Route::post('CreateProfileServices', 'createProfileServices')->name('profile.services.create');
         Route::get('dashboard/stats', 'getDashboardStats')->name('dashboard.stats');
+
+        // Company Profile Management
+        Route::get('GetCompanyProfile', 'getCompanyProfile')->name('profile.get');
+        Route::post('UpdateCompanyProfile', 'updateCompanyProfile')->name('profile.update');
     });
 
     // TIMESHEET MANAGEMENT
