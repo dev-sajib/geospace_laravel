@@ -10,37 +10,181 @@ use App\Models\Notification;
 use App\Helpers\MessageHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
     /**
-     * Get current project list
+     * Get dashboard statistics for freelancer
+     *
+     * @return JsonResponse
+     */
+    public function getDashboardStats(): JsonResponse {
+        try {
+            $freelancerId = Auth::id();
+
+            // Get active contracts count
+            $activeContracts = DB::table( 'contracts' )
+                                 ->where( 'freelancer_id', $freelancerId )
+                                 ->where( 'status', 'Active' )
+                                 ->count();
+
+            $hourlyRate = DB::table( 'user_details' )
+                            ->where( 'user_id', $freelancerId )
+                            ->select( 'hourly_rate' )
+                            ->get();
+
+
+            // Get current balance (sum of approved timesheets not yet paid)
+            $currentBalance = DB::table( 'timesheets as t' )
+                                ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
+                                ->where( 't.freelancer_id', $freelancerId )
+                                ->where( 'ts.status_name', 'Payment_Completed' )
+                                ->whereNull( 't.payment_completed_at' )
+                                ->sum( 't.total_amount' );
+
+            $totalEarning = DB::table( 'timesheets as t' )
+                              ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
+                              ->where( 't.freelancer_id', $freelancerId )
+                              ->sum( 't.total_amount' );
+
+            $pendingPayment = DB::table( 'timesheets as t' )
+                                ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
+                                ->where( 't.freelancer_id', $freelancerId )
+                                ->where( 'ts.status_name', 'Payment_Processing' )
+                                ->sum( 't.total_amount' );
+
+            // Get job recommendations count
+            $recommendations = DB::table( 'projects as p' )
+                                 ->join( 'company_details as cd', 'p.company_id', '=', 'cd.company_id' )
+                                 ->where( 'p.status', 'Published' )
+                                 ->count();
+
+            // Get pending invoices count (timesheets awaiting payment)
+            $pendingInvoices = DB::table( 'timesheets as t' )
+                                 ->join( 'timesheet_status as ts', 't.status_id', '=', 'ts.status_id' )
+                                 ->where( 't.freelancer_id', $freelancerId )
+                                 ->where( 'ts.status_name', 'Approved' )
+                                 ->whereNotNull( 't.payment_requested_at' )
+                                 ->whereNull( 't.payment_completed_at' )
+                                 ->count();
+
+            return response()->json( [
+                'Success' => true,
+                'Message' => 'Dashboard statistics retrieved successfully',
+                'Data'    => [
+                    'total_earning'    => (float) $totalEarning,
+                    'active_contracts' => $activeContracts,
+                    'current_balance'  => (float) $currentBalance,
+                    'recommendations'  => $recommendations,
+                    'pending_invoices' => $pendingInvoices,
+                    'pending_payment'  => $pendingPayment,
+                    'hourly_rate'      => $hourlyRate,
+                ]
+            ] );
+
+        } catch ( \Exception $e ) {
+            return response()->json( [
+                'Success' => false,
+                'Message' => 'Failed to retrieve dashboard statistics',
+                'Error'   => $e->getMessage()
+            ], 500 );
+        }
+    }
+    /**
+     * Get current project list for authenticated company
+     * with progress calculation based on contract dates
      *
      * @return JsonResponse
      */
     public function currentProjectList(): JsonResponse
     {
         try {
+            $user = Auth::user();
+
+            // Get company_id from company_details table
+            $companyDetails = DB::table('company_details')
+                ->where('user_id', $user->user_id)
+                ->first();
+
+            if (!$companyDetails) {
+                return response()->json(
+                    MessageHelper::error('Company details not found'),
+                    404
+                );
+            }
+
+            $companyId = $companyDetails->company_id;
+
+            // Get projects with contracts for this company
             $projects = DB::table('projects as p')
-                ->join('company_details as cd', 'p.company_id', '=', 'cd.user_id')
+                ->leftJoin('contracts as c', function($join) {
+                    $join->on('p.project_id', '=', 'c.project_id')
+                         ->where('c.status', '=', 'Active');
+                })
+                ->leftJoin('company_details as cd', 'p.company_id', '=', 'cd.company_id')
                 ->select(
-                    'p.*',
-                    'cd.company_name',
-                    DB::raw('(SELECT COUNT(*) FROM contracts WHERE project_id = p.project_id) as contract_count')
+                    'p.project_id',
+                    'p.project_title',
+                    'p.project_description',
+                    'p.duration_weeks',
+                    'p.status as project_status',
+                    'p.updated_at',
+                    'cd.logo',
+                    'c.start_date',
+                    'c.end_date'
                 )
+                ->where('p.company_id', $companyId)
                 ->where('p.status', 'In Progress')
                 ->orderBy('p.created_at', 'desc')
                 ->get();
 
-            if ($projects->count() > 0) {
-                return response()->json($projects);
-            } else {
-                return response()->json(
-                    MessageHelper::notFound('No current projects found'),
-                    404
-                );
-            }
+            // Format projects with progress calculation
+            $formattedProjects = $projects->map(function ($project) {
+                $progress = 0;
+                $status = 'Medium Priority';
+
+                if ($project->start_date && $project->duration_weeks) {
+                    $startDate = \Carbon\Carbon::parse($project->start_date);
+                    $durationDays = $project->duration_weeks * 7;
+                    $endDate = $startDate->copy()->addDays($durationDays);
+                    $today = \Carbon\Carbon::now();
+
+                    // Calculate days elapsed and total days
+                    $totalDays = $startDate->diffInDays($endDate);
+                    $daysElapsed = $startDate->diffInDays($today);
+
+                    // Calculate progress percentage
+                    if ($totalDays > 0) {
+                        $progress = min(100, round(($daysElapsed / $totalDays) * 100));
+                    }
+
+                    // Determine priority based on progress
+                    if ($progress < 40) {
+                        $status = 'Low Priority';
+                    } elseif ($progress >= 40 && $progress < 75) {
+                        $status = 'Medium Priority';
+                    } else {
+                        $status = 'High Priority';
+                    }
+                }
+
+                return [
+                    'project_id' => $project->project_id,
+                    'title' => $project->project_title,
+                    'icon' => $project->logo ? env('APP_URL') . '/' . $project->logo : '/images/Fictional-company-logo.png',
+                    'lastUpdate' => $project->updated_at ? \Carbon\Carbon::parse($project->updated_at)->format('d F, Y') : 'N/A',
+                    'progress' => $progress,
+                    'status' => $status,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedProjects,
+                'total' => $formattedProjects->count()
+            ]);
 
         } catch (\Exception $e) {
             return response()->json(
