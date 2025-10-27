@@ -913,11 +913,11 @@ class HomeController extends Controller
             DB::beginTransaction();
 
             try {
-                // Insert feedback
+                // Insert feedback (use user_id for company_id since it references users table)
                 DB::table('feedback')->insert([
                     'contract_id' => $contract->contract_id,
                     'project_id' => $contract->project_id,
-                    'company_id' => $company->company_id,
+                    'company_id' => $user->user_id,  // Use user_id instead of company->company_id
                     'freelancer_id' => $contract->freelancer_id,
                     'attendance_rating' => $request->attendance_rating,
                     'attendance_comment' => $request->attendance_comment,
@@ -951,6 +951,196 @@ class HomeController extends Controller
             Log::error('Submit feedback error: ' . $e->getMessage());
             return response()->json(
                 MessageHelper::error('Failed to submit feedback: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get all feedback submitted by the company
+     * GET /api/v1/company/GetFeedbackList
+     *
+     * @return JsonResponse
+     */
+    public function getFeedbackList(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            // Get all feedback submitted by this company with freelancer details
+            $feedbackList = DB::table('feedback as f')
+                ->join('contracts as c', 'f.contract_id', '=', 'c.contract_id')
+                ->join('projects as p', 'f.project_id', '=', 'p.project_id')
+                ->join('users as u', 'f.freelancer_id', '=', 'u.user_id')
+                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->select(
+                    'f.feedback_id',
+                    'f.contract_id',
+                    'f.project_id',
+                    'f.freelancer_id',
+                    'f.attendance_rating',
+                    'f.attendance_comment',
+                    'f.work_quality_rating',
+                    'f.work_quality_comment',
+                    'f.execution_speed_rating',
+                    'f.execution_speed_comment',
+                    'f.adaptability_rating',
+                    'f.adaptability_comment',
+                    'f.general_feedback_rating',
+                    'f.general_feedback_comment',
+                    'f.created_at',
+                    'p.project_title',
+                    'u.email as freelancer_email',
+                    'ud.first_name',
+                    'ud.last_name'
+                )
+                ->where('f.company_id', $user->user_id)
+                ->orderBy('f.created_at', 'desc')
+                ->get();
+
+            $formattedFeedback = $feedbackList->map(function ($feedback) {
+                return [
+                    'id' => $feedback->feedback_id,
+                    'freelancerName' => trim($feedback->first_name . ' ' . $feedback->last_name),
+                    'freelancer_email' => $feedback->freelancer_email,
+                    'project_title' => $feedback->project_title,
+                    'attendance' => $feedback->attendance_rating,
+                    'workQuality' => $feedback->work_quality_rating,
+                    'executionSpeed' => $feedback->execution_speed_rating,
+                    'adaptability' => $feedback->adaptability_rating,
+                    'generalFeedback' => $feedback->general_feedback_rating,
+                    'feedbackDetails' => [
+                        'attendance' => [
+                            'rating' => $feedback->attendance_rating,
+                            'comment' => $feedback->attendance_comment ?? 'No comment provided'
+                        ],
+                        'workQuality' => [
+                            'rating' => $feedback->work_quality_rating,
+                            'comment' => $feedback->work_quality_comment ?? 'No comment provided'
+                        ],
+                        'executionSpeed' => [
+                            'rating' => $feedback->execution_speed_rating,
+                            'comment' => $feedback->execution_speed_comment ?? 'No comment provided'
+                        ],
+                        'adaptability' => [
+                            'rating' => $feedback->adaptability_rating,
+                            'comment' => $feedback->adaptability_comment ?? 'No comment provided'
+                        ],
+                        'generalFeedback' => [
+                            'rating' => $feedback->general_feedback_rating,
+                            'comment' => $feedback->general_feedback_comment ?? 'No comment provided'
+                        ]
+                    ],
+                    'created_at' => $feedback->created_at
+                ];
+            });
+
+            return response()->json(
+                MessageHelper::success('Feedback list retrieved successfully', [
+                    'feedback' => $formattedFeedback,
+                    'total' => $formattedFeedback->count()
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get feedback list error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve feedback list: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get freelancer profiles with ratings for the company
+     * GET /api/v1/company/GetFreelancerProfiles
+     *
+     * @return JsonResponse
+     */
+    public function getFreelancerProfiles(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $company = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            if (!$company) {
+                return response()->json(
+                    MessageHelper::error('Company profile not found'),
+                    404
+                );
+            }
+
+            // Get freelancers who have worked with this company
+            $freelancerProfiles = DB::table('contracts as c')
+                ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
+                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('projects as p', 'c.project_id', '=', 'p.project_id')
+                ->leftJoin('feedback as f', function($join) use ($user) {
+                    $join->on('c.freelancer_id', '=', 'f.freelancer_id')
+                         ->where('f.company_id', '=', $user->user_id);
+                })
+                ->select(
+                    'u.user_id as freelancer_id',
+                    'ud.first_name',
+                    'ud.last_name',
+                    'ud.bio',
+                    'p.project_title',
+                    'p.project_type',
+                    'c.start_date',
+                    'p.duration_weeks',
+                    'c.total_amount',
+                    DB::raw('MAX(c.created_at) as latest_contract_date'),
+                    DB::raw('COUNT(DISTINCT f.feedback_id) as review_count'),
+                    DB::raw('ROUND(AVG(
+                        (COALESCE(f.attendance_rating, 0) +
+                         COALESCE(f.work_quality_rating, 0) +
+                         COALESCE(f.execution_speed_rating, 0) +
+                         COALESCE(f.adaptability_rating, 0) +
+                         COALESCE(f.general_feedback_rating, 0)) / 5
+                    ), 1) as average_rating')
+                )
+                ->where('c.company_id', $company->company_id)
+                ->whereIn('c.status', ['Completed'])
+                ->groupBy(
+                    'u.user_id',
+                    'ud.first_name',
+                    'ud.last_name',
+                    'ud.bio',
+                    'p.project_title',
+                    'p.project_type',
+                    'c.start_date',
+                    'p.duration_weeks',
+                    'c.total_amount'
+                )
+                ->orderBy('latest_contract_date', 'desc')
+                ->get();
+
+            $formattedProfiles = $freelancerProfiles->map(function ($profile) {
+                return [
+                    'id' => $profile->freelancer_id,
+                    'freelancerName' => trim($profile->first_name . ' ' . $profile->last_name),
+                    'projectName' => $profile->project_title,
+                    'date' => $profile->start_date ? \Carbon\Carbon::parse($profile->start_date)->format('d/m/Y') : 'N/A',
+                    'duration' => $profile->duration_weeks ? $profile->duration_weeks . ' Weeks' : 'N/A',
+                    'spent' => $profile->total_amount ? number_format($profile->total_amount, 2) . ' $' : '0.00 $',
+                    'expertise' => $profile->project_type ?? 'General',
+                    'rating' => $profile->average_rating ? (int)round($profile->average_rating) : 0,
+                    'numberOfReviews' => $profile->review_count ?? 0,
+                    'profileSummary' => $profile->bio ?? 'No profile summary available',
+                ];
+            });
+
+            return response()->json(
+                MessageHelper::success('Freelancer profiles retrieved successfully', [
+                    'profiles' => $formattedProfiles,
+                    'total' => $formattedProfiles->count()
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get freelancer profiles error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve freelancer profiles: ' . $e->getMessage()),
                 500
             );
         }

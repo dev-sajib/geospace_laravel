@@ -39,6 +39,10 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
         // Feedback Management
         Route::get('GetCompletedProjects', 'getCompletedProjects')->name('feedback.completed.projects');
         Route::post('SubmitFeedback', 'submitFeedback')->name('feedback.submit');
+        Route::get('GetFeedbackList', 'getFeedbackList')->name('feedback.list');
+
+        // Freelancer Profiles
+        Route::get('GetFreelancerProfiles', 'getFreelancerProfiles')->name('freelancer.profiles');
     });
 
     // TIMESHEET MANAGEMENT
