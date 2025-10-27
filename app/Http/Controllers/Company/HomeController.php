@@ -9,12 +9,14 @@ use App\Models\Timesheet;
 use App\Models\Notification;
 use App\Models\CompanyDetail;
 use App\Models\UserDetail;
+use App\Models\Contract;
 use App\Helpers\MessageHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
@@ -627,6 +629,330 @@ class HomeController extends Controller
                 'Message' => 'Failed to update company profile',
                 'Error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Create a new project/opportunity
+     * POST /api/v1/company/CreateProject
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function createProject(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'project_title' => 'required|string|max:255',
+                'project_description' => 'required|string',
+                'project_type' => 'nullable|string|max:100',
+                'budget' => 'nullable|numeric|min:0',
+                'currency' => 'nullable|string|max:3',
+                'duration_weeks' => 'nullable|integer|min:1',
+                'skills_required' => 'nullable|array',
+                'skills_required.*' => 'string|max:100',
+                'location' => 'nullable|string|max:255',
+                'is_remote' => 'nullable|boolean',
+                'deadline' => 'nullable|date|after:today'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(
+                    MessageHelper::validationError($validator->errors()->toArray()),
+                    422
+                );
+            }
+
+            $user = Auth::user();
+            $company = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            if (!$company) {
+                return response()->json(
+                    MessageHelper::error('Company profile not found'),
+                    404
+                );
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $budget = $request->budget;
+                $project = Project::create([
+                    'company_id' => $company->company_id,
+                    'project_title' => $request->project_title,
+                    'project_description' => $request->project_description,
+                    'project_type' => $request->project_type,
+                    'budget' => $budget,
+                    'currency' => $request->currency ?? 'CAD',
+                    'duration_weeks' => $request->duration_weeks,
+                    'status' => 'Published',
+                    'skills_required' => $request->skills_required,
+                    'location' => $request->location,
+                    'is_remote' => $request->is_remote ?? false,
+                    'deadline' => $request->deadline
+                ]);
+
+                DB::commit();
+
+                return response()->json(
+                    MessageHelper::success('Project created successfully', [
+                        'project_id' => $project->project_id,
+                        'project_title' => $project->project_title,
+                        'status' => $project->status
+                    ])
+                );
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Project creation error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to create project: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get all projects for the authenticated company
+     * GET /api/v1/company/GetProjects
+     *
+     * @return JsonResponse
+     */
+    public function getProjects(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $company = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            if (!$company) {
+                return response()->json(
+                    MessageHelper::error('Company profile not found'),
+                    404
+                );
+            }
+
+            $projects = Project::where('company_id', $company->company_id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $formattedProjects = $projects->map(function ($project) {
+                return [
+                    'project_id' => $project->project_id,
+                    'project_title' => $project->project_title,
+                    'project_description' => $project->project_description,
+                    'project_type' => $project->project_type,
+                    'budget' => $project->budget??0,
+                    'currency' => $project->currency,
+                    'duration_weeks' => $project->duration_weeks,
+                    'status' => $project->status,
+                    'skills_required' => $project->skills_required,
+                    'location' => $project->location,
+                    'is_remote' => $project->is_remote,
+                    'deadline' => $project->deadline,
+                    'created_at' => $project->created_at,
+                    'updated_at' => $project->updated_at
+                ];
+            });
+
+            return response()->json(
+                MessageHelper::success('Projects retrieved successfully', [
+                    'projects' => $formattedProjects,
+                    'total' => $formattedProjects->count()
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get projects error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve projects: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get completed projects with contract details for feedback
+     * GET /api/v1/company/GetCompletedProjects
+     *
+     * @return JsonResponse
+     */
+    public function getCompletedProjects(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $company = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            if (!$company) {
+                return response()->json(
+                    MessageHelper::error('Company profile not found'),
+                    404
+                );
+            }
+
+            // Get completed contracts with project and freelancer details
+            $completedContracts = DB::table('contracts as c')
+                ->join('projects as p', 'c.project_id', '=', 'p.project_id')
+                ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
+                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->leftJoin('feedback as f', 'c.contract_id', '=', 'f.contract_id')
+                ->select(
+                    'c.contract_id',
+                    'c.project_id',
+                    'c.freelancer_id',
+                    'p.project_title',
+                    'u.email as freelancer_email',
+                    'ud.first_name',
+                    'ud.last_name',
+                    'ud.linkedin_url',
+                    'f.feedback_id'
+                )
+                ->where('c.company_id', $company->company_id)
+                ->where('c.status', 'Completed')
+                ->whereNull('f.feedback_id') // Only show contracts without feedback
+                ->orderBy('c.updated_at', 'desc')
+                ->get();
+
+            $formattedContracts = $completedContracts->map(function ($contract) {
+                return [
+                    'contract_id' => $contract->contract_id,
+                    'project_id' => $contract->project_id,
+                    'project_title' => $contract->project_title,
+                    'freelancer_id' => $contract->freelancer_id,
+                    'freelancer_name' => trim($contract->first_name . ' ' . $contract->last_name),
+                    'freelancer_email' => $contract->freelancer_email,
+                    'linkedin_url' => $contract->linkedin_url,
+                ];
+            });
+
+            return response()->json(
+                MessageHelper::success('Completed projects retrieved successfully', [
+                    'projects' => $formattedContracts,
+                    'total' => $formattedContracts->count()
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get completed projects error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve completed projects: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Submit feedback for a completed contract
+     * POST /api/v1/company/SubmitFeedback
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function submitFeedback(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'contract_id' => 'required|integer|exists:contracts,contract_id',
+                'attendance_rating' => 'required|integer|min:1|max:5',
+                'attendance_comment' => 'nullable|string',
+                'work_quality_rating' => 'required|integer|min:1|max:5',
+                'work_quality_comment' => 'nullable|string',
+                'execution_speed_rating' => 'required|integer|min:1|max:5',
+                'execution_speed_comment' => 'nullable|string',
+                'adaptability_rating' => 'required|integer|min:1|max:5',
+                'adaptability_comment' => 'nullable|string',
+                'general_feedback_rating' => 'required|integer|min:1|max:5',
+                'general_feedback_comment' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(
+                    MessageHelper::validationError($validator->errors()->toArray()),
+                    422
+                );
+            }
+
+            $user = Auth::user();
+            $company = CompanyDetail::where('user_id', $user->user_id)->first();
+
+            if (!$company) {
+                return response()->json(
+                    MessageHelper::error('Company profile not found'),
+                    404
+                );
+            }
+
+            // Verify the contract belongs to this company and is completed
+            $contract = Contract::where('contract_id', $request->contract_id)
+                ->where('company_id', $company->company_id)
+                ->where('status', 'Completed')
+                ->first();
+
+            if (!$contract) {
+                return response()->json(
+                    MessageHelper::error('Contract not found or not eligible for feedback'),
+                    404
+                );
+            }
+
+            // Check if feedback already exists for this contract
+            $existingFeedback = DB::table('feedback')
+                ->where('contract_id', $request->contract_id)
+                ->first();
+
+            if ($existingFeedback) {
+                return response()->json(
+                    MessageHelper::error('Feedback has already been submitted for this contract'),
+                    409
+                );
+            }
+
+            DB::beginTransaction();
+
+            try {
+                // Insert feedback
+                DB::table('feedback')->insert([
+                    'contract_id' => $contract->contract_id,
+                    'project_id' => $contract->project_id,
+                    'company_id' => $company->company_id,
+                    'freelancer_id' => $contract->freelancer_id,
+                    'attendance_rating' => $request->attendance_rating,
+                    'attendance_comment' => $request->attendance_comment,
+                    'work_quality_rating' => $request->work_quality_rating,
+                    'work_quality_comment' => $request->work_quality_comment,
+                    'execution_speed_rating' => $request->execution_speed_rating,
+                    'execution_speed_comment' => $request->execution_speed_comment,
+                    'adaptability_rating' => $request->adaptability_rating,
+                    'adaptability_comment' => $request->adaptability_comment,
+                    'general_feedback_rating' => $request->general_feedback_rating,
+                    'general_feedback_comment' => $request->general_feedback_comment,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                DB::commit();
+
+                return response()->json(
+                    MessageHelper::success('Feedback submitted successfully', [
+                        'contract_id' => $contract->contract_id,
+                        'project_title' => $contract->contract_title
+                    ])
+                );
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Submit feedback error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to submit feedback: ' . $e->getMessage()),
+                500
+            );
         }
     }
 }

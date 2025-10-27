@@ -31,6 +31,14 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
         // Company Profile Management
         Route::get('GetCompanyProfile', 'getCompanyProfile')->name('profile.get');
         Route::post('UpdateCompanyProfile', 'updateCompanyProfile')->name('profile.update');
+        
+        // Project Management
+        Route::post('CreateProject', 'createProject')->name('project.create');
+        Route::get('GetProjects', 'getProjects')->name('project.list');
+
+        // Feedback Management
+        Route::get('GetCompletedProjects', 'getCompletedProjects')->name('feedback.completed.projects');
+        Route::post('SubmitFeedback', 'submitFeedback')->name('feedback.submit');
     });
 
     // TIMESHEET MANAGEMENT
