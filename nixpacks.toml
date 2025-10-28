@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ['...', 'mysql80']
+nixPkgs = ['...']
+phpExtensions = ['pdo_mysql', 'mysqli', 'mbstring', 'xml', 'curl', 'zip', 'gd', 'bcmath']
 
 [phases.install]
 cmds = [
