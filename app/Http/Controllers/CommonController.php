@@ -345,7 +345,11 @@ class CommonController extends Controller
                 'Description' => 'nullable|string',
                 'FoundedYear' => 'nullable|integer|min:1800|max:' . date('Y'),
                 'Headquarters' => 'nullable|string|max:255',
-                'Logo' => 'nullable|string|max:500'
+                'Logo' => 'nullable|string|max:500',
+
+                // Contact information
+                'ContactName' => 'nullable|string|max:200',
+                'ContactNumber' => 'nullable|string|max:20'
             ]);
 
             if ($validator->fails()) {
@@ -394,6 +398,21 @@ class CommonController extends Controller
                     'headquarters' => $request->input('Headquarters'),
                     'logo' => $request->input('Logo')
                 ]);
+
+                // Create user details with contact information
+                if ($request->filled('ContactName') || $request->filled('ContactNumber')) {
+                    $contactName = $request->input('ContactName', '');
+                    $nameParts = explode(' ', $contactName, 2);
+                    $firstName = $nameParts[0] ?? 'N/A';
+                    $lastName = $nameParts[1] ?? '-';
+
+                    UserDetail::create([
+                        'user_id' => $user->user_id,
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'phone' => $request->input('ContactNumber')
+                    ]);
+                }
 
                 DB::commit();
 

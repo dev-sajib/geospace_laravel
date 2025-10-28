@@ -27,6 +27,8 @@ class Invoice extends Model
         'total_amount',
         'currency',
         'status',
+        'freelancer_status',
+        'company_status',
         'due_date',
         'sent_at',
         'paid_at'

@@ -18,8 +18,7 @@ class Project extends Model
         'project_title',
         'project_description',
         'project_type',
-        'budget_min',
-        'budget_max',
+        'budget',
         'currency',
         'duration_weeks',
         'status',
@@ -30,8 +29,7 @@ class Project extends Model
     ];
 
     protected $casts = [
-        'budget_min' => 'decimal:2',
-        'budget_max' => 'decimal:2',
+        'budget' => 'decimal:2',
         'duration_weeks' => 'integer',
         'skills_required' => 'array',
         'is_remote' => 'boolean',

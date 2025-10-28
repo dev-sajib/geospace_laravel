@@ -469,6 +469,12 @@ class FreelancerTimesheetController extends Controller {
 
                 $totalHours += $day['hours_worked'];
 
+                // Delete old freelancer comments for this day (keep only last one)
+                DB::table( 'timesheet_day_comments' )
+                  ->where( 'day_id', $day['day_id'] )
+                  ->where( 'comment_type', 'Freelancer' )
+                  ->delete();
+
                 // Add freelancer comment if provided
                 if ( ! empty( $day['freelancer_comment'] ) ) {
                     DB::table( 'timesheet_day_comments' )->insert( [

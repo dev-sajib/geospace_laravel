@@ -246,6 +246,12 @@ class CompanyTimesheetController extends Controller
                 ], 404);
             }
 
+            // Delete old company comments for this day (keep only last one)
+            DB::table('timesheet_day_comments')
+                ->where('day_id', $dayId)
+                ->where('comment_type', 'Company')
+                ->delete();
+
             // Add comment
             $commentId = DB::table('timesheet_day_comments')->insertGetId([
                 'day_id' => $dayId,
@@ -318,16 +324,23 @@ class CompanyTimesheetController extends Controller
                 ], 400);
             }
 
-            // Update timesheet status to Accepted
-            $acceptedStatus = DB::table('timesheet_status')
-                ->where('status_name', 'Accepted')
+            // Update timesheet status to Approved
+            $approvedStatus = DB::table('timesheet_status')
+                ->where('status_name', 'Approved')
                 ->first();
+
+            if (!$approvedStatus) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Approved status not found in system'
+                ], 500);
+            }
 
             DB::table('timesheets')
                 ->where('timesheet_id', $id)
                 ->update([
-                    'status_id' => $acceptedStatus->status_id,
-                    'status_display_name' => $acceptedStatus->status_name,
+                    'status_id' => $approvedStatus->status_id,
+                    'status_display_name' => $approvedStatus->status_name,
                     'reviewed_at' => now(),
                     'reviewed_by' => $companyUserId,
                     'updated_at' => now()
@@ -350,6 +363,8 @@ class CompanyTimesheetController extends Controller
                 'total_amount' => $timesheet->total_amount,
                 'currency' => 'CAD',
                 'status' => 'Generated',
+                'freelancer_status' => 'pending',
+                'company_status' => 'pending',
                 'due_date' => now()->addDays(30)->toDateString(),
                 'created_at' => now(),
                 'updated_at' => now()
@@ -360,7 +375,7 @@ class CompanyTimesheetController extends Controller
                 'user_id' => $timesheet->freelancer_id,
                 'title' => 'Timesheet Accepted',
                 'message' => 'Your timesheet has been accepted by the company',
-                'type' => 'Timesheet',
+                'type' => 'Success',
                 'action_url' => "/freelancer/timesheets/{$id}",
                 'is_read' => false,
                 'created_at' => now()
@@ -452,6 +467,13 @@ class CompanyTimesheetController extends Controller
                 ->where('status_name', 'Rejected')
                 ->first();
 
+            if (!$rejectedStatus) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rejected status not found in system'
+                ], 500);
+            }
+
             DB::table('timesheets')
                 ->where('timesheet_id', $id)
                 ->update([
@@ -467,7 +489,7 @@ class CompanyTimesheetController extends Controller
                 'user_id' => $timesheet->freelancer_id,
                 'title' => 'Timesheet Rejected',
                 'message' => 'Your timesheet has been rejected. Please review and resubmit.',
-                'type' => 'Timesheet',
+                'type' => 'Warning',
                 'action_url' => "/freelancer/timesheets/{$id}",
                 'is_read' => false,
                 'created_at' => now()

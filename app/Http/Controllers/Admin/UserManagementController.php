@@ -204,34 +204,58 @@ class UserManagementController extends \App\Http\Controllers\Controller {
             }
 
             $details = $user->userDetails;
+            $companyDetails = $user->companyDetails;
 
+            // Base user data
             $userData = [
                 'UserId'       => $user->user_id,
                 'Email'        => $user->email,
                 'UserPosition' => $user->user_position,
+                'RoleId'       => $user->role_id,
                 'RoleName'     => $user->role->role_name ?? 'N/A',
-                'IsVerified'   => $user->is_verified,  // FIXED: Use is_verified instead
+                'IsVerified'   => $user->is_verified,
                 'IsActive'     => $user->is_active,
-                'CreatedAt'    => $user->created_at->format( 'Y-m-d H:i:s' ),
-
-                // User details
-                'FirstName'    => $details->first_name ?? 'N/A',
-                'LastName'     => $details->last_name ?? 'N/A',
-                'Phone'        => $details->phone ?? 'N/A',
-                'Country'      => $details->country ?? 'N/A',
-                'City'         => $details->city ?? 'N/A',
-                'Address'      => $details->address ?? 'N/A',
-                'PostalCode'   => $details->postal_code ?? 'N/A',
-                'ProfileImage' => $details->profile_image
-                    ? env( 'APP_URL' ) . '/' . $details->profile_image
-                    : null,
-                'ResumeCV'     => $details->resume_or_cv
-                    ? env( 'APP_URL' ) . '/' . $details->resume_or_cv
-                    : null,
-                'HourlyRate'   => $details->hourly_rate ?? 0,
-                'LinkedInUrl'  => $details->linkedin_url ?? 'N/A',
-                'Bio'          => $details->bio ?? 'N/A'
+                'CreatedAt'    => $user->created_at->format( 'Y-m-d H:i:s' )
             ];
+
+            // Add freelancer-specific details if role is Freelancer (role_id = 2)
+            if ($user->role_id == 2) {
+                $userData = array_merge($userData, [
+                    'FirstName'    => $details?->first_name ?? 'N/A',
+                    'LastName'     => $details?->last_name ?? 'N/A',
+                    'Phone'        => $details?->phone ?? 'N/A',
+                    'Country'      => $details?->country ?? 'N/A',
+                    'City'         => $details?->city ?? 'N/A',
+                    'Address'      => $details?->address ?? 'N/A',
+                    'PostalCode'   => $details?->postal_code ?? 'N/A',
+                    'ProfileImage' => ($details && $details->profile_image)
+                        ? env( 'APP_URL' ) . '/' . $details->profile_image
+                        : null,
+                    'ResumeCV'     => ($details && $details->resume_or_cv)
+                        ? env( 'APP_URL' ) . '/' . $details->resume_or_cv
+                        : null,
+                    'HourlyRate'   => $details?->hourly_rate ?? 0,
+                    'LinkedInUrl'  => $details?->linkedin_url ?? 'N/A',
+                    'Bio'          => $details?->bio ?? 'N/A'
+                ]);
+            }
+
+            // Add company-specific details if role is Company (role_id = 3)
+            if ($user->role_id == 3) {
+                $userData = array_merge($userData, [
+                    'CompanyName'  => $companyDetails?->company_name ?? 'N/A',
+                    'CompanyType'  => $companyDetails?->company_type ?? 'N/A',
+                    'Industry'     => $companyDetails?->industry ?? 'N/A',
+                    'CompanySize'  => $companyDetails?->company_size ?? 'N/A',
+                    'Website'      => $companyDetails?->website ?? 'N/A',
+                    'Description'  => $companyDetails?->description ?? 'N/A',
+                    'FoundedYear'  => $companyDetails?->founded_year ?? 'N/A',
+                    'Headquarters' => $companyDetails?->headquarters ?? 'N/A',
+                    'Logo'         => ($companyDetails && $companyDetails->logo)
+                        ? env( 'APP_URL' ) . '/' . $companyDetails->logo
+                        : null
+                ]);
+            }
 
             return response()->json(
                 MessageHelper::success( 'User details retrieved successfully', $userData )

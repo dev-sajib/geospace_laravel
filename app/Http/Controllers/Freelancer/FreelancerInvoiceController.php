@@ -22,7 +22,7 @@ class FreelancerInvoiceController extends Controller
 
             $query = Invoice::with([
                 'contract.project',
-                'company.companyInfo',
+                'company',
                 'timesheet'
             ])->where('freelancer_id', $freelancerId);
 
@@ -30,7 +30,7 @@ class FreelancerInvoiceController extends Controller
             if ($request->has('invoice_type')) {
                 switch ($request->invoice_type) {
                     case 'Pending Payments':
-                        $query->whereIn('status', ['Generated', 'Sent']);
+                        $query->where('freelancer_status', 'pending');
                         break;
                     case 'Completed Payments':
                         $query->where('status', 'Paid');
@@ -61,8 +61,8 @@ class FreelancerInvoiceController extends Controller
                 return [
                     'invoice_id' => $invoice->invoice_id,
                     'invoice_number' => $invoice->invoice_number,
-                    'projectName' => $invoice->contract->project->title ?? 'N/A',
-                    'companyName' => $invoice->company->companyInfo->CompanyName ?? 'N/A',
+                    'projectName' => $invoice->contract->project->project_title ?? 'N/A',
+                    'companyName' => $invoice->company->company_name ?? 'N/A',
                     'amount' => '$' . number_format($invoice->total_amount, 2),
                     'amountRaw' => $invoice->total_amount,
                     'currency' => $invoice->currency,
