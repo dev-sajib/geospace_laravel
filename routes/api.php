@@ -19,6 +19,34 @@ use App\Http\Controllers\CommonController;
 |
 */
 
+// HEALTH CHECK ROUTE (For monitoring and deployment verification)
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'GeoSpace API is running',
+        'timestamp' => now()->toDateTimeString(),
+        'environment' => app()->environment(),
+    ]);
+});
+
+// DATABASE HEALTH CHECK
+Route::get('/health/db', function () {
+    try {
+        \DB::connection()->getPdo();
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'Database connection successful',
+            'database' => \DB::connection()->getDatabaseName(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Database connection failed',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 // PUBLIC ROUTES (No Authentication Required)
 Route::prefix( 'v1' )->group( function () {
 

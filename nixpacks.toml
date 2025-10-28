@@ -1,0 +1,18 @@
+[phases.setup]
+nixPkgs = ['...', 'mysql80']
+
+[phases.install]
+cmds = [
+    'composer install --optimize-autoloader --no-dev',
+    'php artisan storage:link || true'
+]
+
+[phases.build]
+cmds = [
+    'php artisan config:cache',
+    'php artisan route:cache',
+    'php artisan view:cache'
+]
+
+[start]
+cmd = 'php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}'
