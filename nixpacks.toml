@@ -1,6 +1,7 @@
+[providers.php]
+extensions = ['pdo_mysql', 'mysqli', 'mbstring', 'xml', 'curl', 'zip', 'gd', 'bcmath']
+
 [phases.setup]
-nixPkgs = ['...']
-phpExtensions = ['pdo_mysql', 'mysqli', 'mbstring', 'xml', 'curl', 'zip', 'gd', 'bcmath']
 
 [phases.install]
 cmds = [
