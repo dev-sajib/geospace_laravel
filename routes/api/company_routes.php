@@ -19,7 +19,7 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
 
     // DASHBOARD & PROFILE
     Route::controller(CompanyHomeController::class)->group(function () {
-        Route::get('dashboard/stats', 'getDashboardStats')->name('dashboard.stats');
+        Route::get('dashboard/stats', 'getDashboardStats')->name('stats');
         Route::get('CurrentProjectList', 'currentProjectList')->name('projects.current');
         Route::get('ActiveFreelancerList', 'activeFreelancerList')->name('freelancers.active');
         Route::get('CompanyPendingTimesheetList', 'companyPendingTimesheetList')->name('timesheets.pending.list');

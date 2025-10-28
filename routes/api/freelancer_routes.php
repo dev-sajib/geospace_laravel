@@ -13,7 +13,7 @@ Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->
     // DASHBOARD & PROFILE
     Route::controller(FreelancerHomeController::class)->group(function () {
         Route::get('UserList', 'userList')->name('users.list');
-        Route::get('dashboard/stats', 'getDashboardStats')->name('dashboard.stats');
+        Route::get('dashboard/stats', 'getDashboardStats')->name('stats');
         Route::get('contracts/active', 'getActiveContracts')->name('contracts.active');
         Route::get('job-recommendations', 'getJobRecommendations')->name('job.recommendations');
         Route::get('earnings/overview', 'getEarningsOverview')->name('earnings.overview');
