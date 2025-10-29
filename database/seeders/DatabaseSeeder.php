@@ -21,12 +21,9 @@ class DatabaseSeeder extends Seeder
             DisputeStatusSeeder::class,
         ]);
 
-        // Add other seeders here as needed, in order of dependencies
-        // Example:
-        // $this->call([
-        //     UsersSeeder::class,
-        //     ProjectsSeeder::class,
-        //     ContractsSeeder::class,
-        // ]);
+        // Seed users (depends on roles)
+        $this->call([
+            UsersTableSeeder::class,
+        ]);
     }
 }
