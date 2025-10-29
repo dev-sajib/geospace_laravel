@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+node_modules
+vendor
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+*.md
+.DS_Store
+.idea
+.vscode
+tests
+*.zip
