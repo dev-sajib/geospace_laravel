@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Company\HomeController as CompanyHomeController;
 use App\Http\Controllers\Company\CompanyTimesheetController;
+use App\Http\Controllers\Company\CompanyVideoSupportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,5 +68,12 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
 
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('history', [CompanyTimesheetController::class, 'paymentHistory'])->name('history');
+    });
+
+    // VIDEO SUPPORT
+    Route::controller(CompanyVideoSupportController::class)->prefix('video-support')->name('video-support.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::get('{requestId}', 'show')->name('show');
     });
 });
