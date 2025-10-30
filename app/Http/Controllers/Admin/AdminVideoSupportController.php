@@ -16,16 +16,64 @@ class AdminVideoSupportController extends Controller
     public function index()
     {
         try {
-            $requests = VideoSupportRequest::with(['freelancer.userDetails'])
+            $requests = VideoSupportRequest::with([
+                'freelancer.userDetails',
+                'freelancer.companyDetails',
+                'freelancer.role',
+                'company.userDetails',
+                'company.companyDetails',
+                'company.role'
+            ])
                 ->orderBy('meeting_date', 'desc')
                 ->orderBy('meeting_time', 'desc')
                 ->get();
 
             // Format data for frontend
             $formattedRequests = $requests->map(function ($request) {
-                $firstName = $request->freelancer->userDetails->first_name ?? '';
-                $lastName = $request->freelancer->userDetails->last_name ?? '';
-                $senderName = trim($firstName . ' ' . $lastName) ?: 'Unknown User';
+                $senderName = 'Unknown User';
+                $senderRole = 'Unknown';
+                $userId = null;
+
+                // Check if this is a freelancer request
+                if ($request->freelancer_id && $request->freelancer) {
+                    $user = $request->freelancer;
+
+                    // Try to get name from userDetails first
+                    if ($user->userDetails) {
+                        $firstName = $user->userDetails->first_name ?? '';
+                        $lastName = $user->userDetails->last_name ?? '';
+                        $senderName = trim($firstName . ' ' . $lastName);
+                    }
+
+                    // If no name from userDetails, try companyDetails (in case freelancer also has company details)
+                    if (!$senderName && $user->companyDetails) {
+                        $senderName = $user->companyDetails->company_name ?? '';
+                    }
+
+                    $senderName = $senderName ?: 'Unknown Freelancer';
+                    $senderRole = $user->role->role_name ?? 'Freelancer';
+                    $userId = $request->freelancer_id;
+                }
+                // Check if this is a company request
+                elseif ($request->company_id && $request->company) {
+                    $user = $request->company;
+
+                    // Try to get company name from companyDetails
+                    if ($user->companyDetails) {
+                        $senderName = $user->companyDetails->company_name ?? '';
+                    }
+
+                    // If no name from companyDetails, try userDetails
+                    if (!$senderName && $user->userDetails) {
+                        $firstName = $user->userDetails->first_name ?? '';
+                        $lastName = $user->userDetails->last_name ?? '';
+                        $senderName = trim($firstName . ' ' . $lastName);
+                    }
+
+                    $senderName = $senderName ?: 'Unknown Company';
+                    $senderRole = $user->role->role_name ?? 'Company';
+                    $userId = $request->company_id;
+                }
 
                 return [
                     'request_id' => $request->request_id,
@@ -34,8 +82,10 @@ class AdminVideoSupportController extends Controller
                     'meetingTime' => date('g:i A', strtotime($request->meeting_time)),
                     'meetingTimeRaw' => $request->meeting_time,
                     'senderName' => $senderName,
-                    'senderRole' => 'Freelancer',
+                    'senderRole' => $senderRole,
                     'freelancerId' => $request->freelancer_id,
+                    'companyId' => $request->company_id,
+                    'userId' => $userId,
                     'videoLink' => $request->video_link,
                     'status' => $request->status,
                     'notes' => $request->notes,
@@ -132,19 +182,65 @@ class AdminVideoSupportController extends Controller
     public function show($requestId)
     {
         try {
-            $request = VideoSupportRequest::with(['freelancer.userDetails'])
-                ->findOrFail($requestId);
+            $request = VideoSupportRequest::with([
+                'freelancer.userDetails',
+                'freelancer.companyDetails',
+                'freelancer.role',
+                'company.userDetails',
+                'company.companyDetails',
+                'company.role'
+            ])->findOrFail($requestId);
 
-            $firstName = $request->freelancer->userDetails->first_name ?? '';
-            $lastName = $request->freelancer->userDetails->last_name ?? '';
-            $freelancerName = trim($firstName . ' ' . $lastName) ?: 'Unknown User';
+            $userName = 'Unknown User';
+            $userRole = 'Unknown';
+            $userId = null;
+
+            // Check if this is a freelancer request
+            if ($request->freelancer_id && $request->freelancer) {
+                $user = $request->freelancer;
+
+                if ($user->userDetails) {
+                    $firstName = $user->userDetails->first_name ?? '';
+                    $lastName = $user->userDetails->last_name ?? '';
+                    $userName = trim($firstName . ' ' . $lastName);
+                }
+
+                if (!$userName && $user->companyDetails) {
+                    $userName = $user->companyDetails->company_name ?? '';
+                }
+
+                $userName = $userName ?: 'Unknown Freelancer';
+                $userRole = $user->role->role_name ?? 'Freelancer';
+                $userId = $request->freelancer_id;
+            }
+            // Check if this is a company request
+            elseif ($request->company_id && $request->company) {
+                $user = $request->company;
+
+                if ($user->companyDetails) {
+                    $userName = $user->companyDetails->company_name ?? '';
+                }
+
+                if (!$userName && $user->userDetails) {
+                    $firstName = $user->userDetails->first_name ?? '';
+                    $lastName = $user->userDetails->last_name ?? '';
+                    $userName = trim($firstName . ' ' . $lastName);
+                }
+
+                $userName = $userName ?: 'Unknown Company';
+                $userRole = $user->role->role_name ?? 'Company';
+                $userId = $request->company_id;
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'request_id' => $request->request_id,
                     'freelancer_id' => $request->freelancer_id,
-                    'freelancer_name' => $freelancerName,
+                    'company_id' => $request->company_id,
+                    'user_id' => $userId,
+                    'user_name' => $userName,
+                    'user_role' => $userRole,
                     'meeting_date' => $request->meeting_date->format('Y-m-d'),
                     'meeting_time' => $request->meeting_time,
                     'video_link' => $request->video_link,
