@@ -86,4 +86,11 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
         Route::post('conversations/{conversationId}/messages', [App\Http\Controllers\Api\ChatController::class, 'sendMessage'])->name('conversations.messages.store');
         Route::post('conversations/{conversationId}/typing', [App\Http\Controllers\Api\ChatController::class, 'sendTypingIndicator'])->name('conversations.typing');
     });
+
+    // DISPUTE TICKET MANAGEMENT
+    Route::prefix('dispute')->name('dispute.')->group(function () {
+        Route::get('company-contracts/{userId}', [App\Http\Controllers\DisputeController::class, 'getCompanyContracts'])->name('company.contracts');
+        Route::get('tickets/{userId}', [App\Http\Controllers\DisputeController::class, 'getCompanyTickets'])->name('tickets.list');
+        Route::post('tickets/submit', [App\Http\Controllers\DisputeController::class, 'submitTicket'])->name('tickets.submit');
+    });
 });

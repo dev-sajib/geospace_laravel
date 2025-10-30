@@ -139,6 +139,116 @@ class DisputeController extends Controller
     }
 
     /**
+     * Get company's contracts for dispute ticket creation
+     *
+     * @param int $userId
+     * @return JsonResponse
+     */
+    public function getCompanyContracts($userId): JsonResponse
+    {
+        try {
+            // Get company_id from company_details using user_id
+            $company = DB::table('company_details')
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$company) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company details not found',
+                    'data' => []
+                ], 404);
+            }
+
+            $contracts = DB::table('contracts as c')
+                ->join('projects as p', 'c.project_id', '=', 'p.project_id')
+                ->join('user_details as ud', 'c.freelancer_id', '=', 'ud.user_id')
+                ->where('c.company_id', $company->company_id)
+                ->where('c.status', 'Active')
+                ->select(
+                    'c.contract_id as ContractId',
+                    'c.contract_title as ContractTitle',
+                    'c.freelancer_id as FreelancerId',
+                    DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as FreelancerName"),
+                    'c.status as ContractStatus',
+                    'p.project_title as ProjectTitle'
+                )
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $contracts
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch contracts',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get company's dispute tickets
+     *
+     * @param int $userId
+     * @return JsonResponse
+     */
+    public function getCompanyTickets($userId): JsonResponse
+    {
+        try {
+            // Get company_id from company_details using user_id
+            $company = DB::table('company_details')
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$company) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company details not found',
+                    'data' => []
+                ], 404);
+            }
+
+            $tickets = DB::table('dispute_tickets as dt')
+                ->join('contracts as c', 'dt.contract_id', '=', 'c.contract_id')
+                ->join('projects as p', 'c.project_id', '=', 'p.project_id')
+                ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
+                ->join('user_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
+                ->join('dispute_status as ds', 'dt.status_id', '=', 'ds.status_id')
+                ->where('c.company_id', $company->company_id)
+                ->select(
+                    'dt.ticket_id as TicketId',
+                    'dt.ticket_number as TicketNumber',
+                    'dt.subject as Issue',
+                    'dt.description as Description',
+                    'dt.priority as Priority',
+                    'dt.category as Category',
+                    'dt.created_at as SubmissionDate',
+                    'ds.status_name as Status',
+                    'cd.company_name as CompanyName',
+                    DB::raw("CONCAT(freelancer_ud.first_name, ' ', freelancer_ud.last_name) as FreelancerName"),
+                    'p.project_title as ProjectTitle'
+                )
+                ->orderBy('dt.created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $tickets
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch tickets',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get dispute tickets list for admin
      *
      * @return JsonResponse
@@ -150,7 +260,8 @@ class DisputeController extends Controller
                 ->join('contracts as c', 'dt.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
-                ->join('user_details as ud', 'dt.created_by', '=', 'ud.user_id')
+                ->join('users as creator', 'dt.created_by', '=', 'creator.user_id')
+                ->join('user_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
                 ->join('dispute_status as ds', 'dt.status_id', '=', 'ds.status_id')
                 ->leftJoin('user_details as agent_ud', 'dt.assigned_to', '=', 'agent_ud.user_id')
                 ->select(
@@ -158,6 +269,7 @@ class DisputeController extends Controller
                     'dt.ticket_number as TicketNumber',
                     'dt.contract_id as ContractId',
                     'dt.created_by as CreatedBy',
+                    'creator.role_id as CreatorRoleId',
                     'dt.assigned_to as AssignedTo',
                     'dt.status_id as StatusId',
                     'dt.priority as Priority',
@@ -170,7 +282,7 @@ class DisputeController extends Controller
                     'dt.created_at as SubmissionDate',
                     'ds.status_name as StatusDisplayName',
                     'cd.company_name as CompanyName',
-                    DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as FreelancerName"),
+                    DB::raw("CONCAT(freelancer_ud.first_name, ' ', freelancer_ud.last_name) as FreelancerName"),
                     DB::raw("CONCAT(agent_ud.first_name, ' ', agent_ud.last_name) as AssignedAgent"),
                     'p.project_title as ProjectTitle'
                 )
