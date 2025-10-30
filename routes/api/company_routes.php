@@ -76,4 +76,14 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
         Route::post('/', 'store')->name('store');
         Route::get('{requestId}', 'show')->name('show');
     });
+
+    // CHAT SUPPORT
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::post('conversations', [App\Http\Controllers\Api\ChatController::class, 'createConversation'])->name('conversations.store');
+        Route::get('conversations', [App\Http\Controllers\Api\ChatController::class, 'getConversations'])->name('conversations.index');
+        Route::delete('conversations/{conversationId}', [App\Http\Controllers\Api\ChatController::class, 'deleteConversation'])->name('conversations.delete');
+        Route::get('conversations/{conversationId}/messages', [App\Http\Controllers\Api\ChatController::class, 'getMessages'])->name('conversations.messages');
+        Route::post('conversations/{conversationId}/messages', [App\Http\Controllers\Api\ChatController::class, 'sendMessage'])->name('conversations.messages.store');
+        Route::post('conversations/{conversationId}/typing', [App\Http\Controllers\Api\ChatController::class, 'sendTypingIndicator'])->name('conversations.typing');
+    });
 });
