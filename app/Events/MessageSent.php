@@ -92,13 +92,9 @@ class MessageSent implements ShouldBroadcast
             return 'Unknown';
         }
 
-        // If it's a User model, get name from UserDetail
+        // If it's a User model, get name from role-specific details
         if ($sender instanceof \App\Models\User) {
-            $userDetail = $sender->userDetails;
-            if ($userDetail) {
-                return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $sender->email;
-            }
-            return $sender->email;
+            return $sender->full_name;
         }
 
         // If it's an Admin model, try to get name or email

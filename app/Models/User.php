@@ -68,14 +68,24 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 
-    public function userDetails()
-    {
-        return $this->hasOne(UserDetail::class, 'user_id', 'user_id');
-    }
-
     public function companyDetails()
     {
         return $this->hasOne(CompanyDetail::class, 'user_id', 'user_id');
+    }
+
+    public function freelancerDetails()
+    {
+        return $this->hasOne(FreelancerDetail::class, 'user_id', 'user_id');
+    }
+
+    public function adminDetails()
+    {
+        return $this->hasOne(AdminDetail::class, 'user_id', 'user_id');
+    }
+
+    public function supportDetails()
+    {
+        return $this->hasOne(SupportDetail::class, 'user_id', 'user_id');
     }
 
     public function contracts()
@@ -121,5 +131,78 @@ class User extends Authenticatable implements JWTSubject
     public function visitorLogs()
     {
         return $this->hasMany(VisitorLog::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Helper methods to get personal data from role-specific tables
+     */
+
+    /**
+     * Get user's first name from appropriate role-specific table
+     */
+    public function getFirstNameAttribute($value)
+    {
+        switch ($this->role_id) {
+            case 1: // Admin
+                return $this->adminDetails->first_name ?? null;
+            case 2: // Freelancer
+                return $this->freelancerDetails->first_name ?? null;
+            case 3: // Company
+                return $this->companyDetails->contact_first_name ?? null;
+            case 4: // Support
+                return $this->supportDetails->first_name ?? null;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get user's last name from appropriate role-specific table
+     */
+    public function getLastNameAttribute($value)
+    {
+        switch ($this->role_id) {
+            case 1: // Admin
+                return $this->adminDetails->last_name ?? null;
+            case 2: // Freelancer
+                return $this->freelancerDetails->last_name ?? null;
+            case 3: // Company
+                return $this->companyDetails->contact_last_name ?? null;
+            case 4: // Support
+                return $this->supportDetails->last_name ?? null;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get user's phone from appropriate role-specific table
+     */
+    public function getPhoneAttribute($value)
+    {
+        switch ($this->role_id) {
+            case 1: // Admin
+                return $this->adminDetails->phone ?? null;
+            case 2: // Freelancer
+                return $this->freelancerDetails->phone ?? null;
+            case 3: // Company
+                return $this->companyDetails->contact_phone ?? null;
+            case 4: // Support
+                return $this->supportDetails->phone ?? null;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get user's full name
+     */
+    public function getFullNameAttribute(): string
+    {
+        $firstName = $this->first_name;
+        $lastName = $this->last_name;
+
+        $fullName = trim(($firstName ?? '') . ' ' . ($lastName ?? ''));
+        return $fullName ?: $this->email;
     }
 }

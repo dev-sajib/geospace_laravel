@@ -73,22 +73,16 @@ class UserTyping implements ShouldBroadcast
     {
         try {
             if ($userType === 'App\\Models\\User') {
-                $user = \App\Models\User::with('userDetails')->find($userId);
-                if ($user && $user->userDetails) {
-                    return trim($user->userDetails->first_name . ' ' . $user->userDetails->last_name) ?: $user->email;
-                }
-                return $user ? $user->email : 'Unknown';
+                $user = \App\Models\User::with(['freelancerDetails', 'companyDetails', 'adminDetails', 'supportDetails'])->find($userId);
+                return $user ? $user->full_name : 'Unknown';
             }
 
             if ($userType === 'App\\Models\\Admin') {
                 // Admin is a User with role_id = 1, so we need to temporarily disable the global scope
                 $admin = \App\Models\Admin::withoutGlobalScope('adminOnly')
-                    ->with('userDetails')
+                    ->with('adminDetails')
                     ->find($userId);
-                if ($admin && $admin->userDetails) {
-                    return trim($admin->userDetails->first_name . ' ' . $admin->userDetails->last_name) ?: $admin->email;
-                }
-                return $admin ? $admin->email : 'Unknown';
+                return $admin ? $admin->full_name : 'Unknown';
             }
 
             return 'Unknown';

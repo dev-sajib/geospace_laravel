@@ -445,13 +445,9 @@ class ChatController extends Controller
             return 'Unknown';
         }
 
-        // Both User and Admin models have userDetails relationship
+        // Both User and Admin models have full_name accessor
         if ($sender instanceof \App\Models\User || $sender instanceof \App\Models\Admin) {
-            $userDetail = $sender->userDetails;
-            if ($userDetail) {
-                return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $sender->email;
-            }
-            return $sender->email;
+            return $sender->full_name;
         }
 
         return 'Unknown';
@@ -468,13 +464,9 @@ class ChatController extends Controller
 
         $participant = $customer->participant;
 
-        // Both User and Admin models have userDetails relationship
+        // Both User and Admin models have full_name accessor
         if ($participant instanceof \App\Models\User || $participant instanceof \App\Models\Admin) {
-            $userDetail = $participant->userDetails;
-            if ($userDetail) {
-                return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $participant->email;
-            }
-            return $participant->email;
+            return $participant->full_name;
         }
 
         return 'Unknown';

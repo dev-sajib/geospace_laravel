@@ -65,6 +65,10 @@ Route::prefix( 'v1' )->group( function () {
         // OAuth Callbacks
         Route::get( 'auth/linkedin/callback/signup', 'linkedInCallback' )->name( 'api.oauth.linkedin.callback' );
 
+        // Public Freelancer Endpoints
+        Route::get( 'Freelancers', 'getFreelancers' )->name( 'api.freelancers.list' );
+        Route::get( 'Freelancers/{id}', 'getFreelancerById' )->name( 'api.freelancers.show' );
+
     } );
 
     // Visitor Logging (Public)

@@ -17,7 +17,7 @@ class FreelancerInvoiceController extends Controller
     {
         try {
             $user = Auth::user();
-            $user->load('userDetails'); // Eager load userDetails
+            $user->load('freelancerDetails'); // Eager load freelancerDetails
             $freelancerId = $user->user_id;
 
             $query = Invoice::with([
@@ -78,9 +78,9 @@ class FreelancerInvoiceController extends Controller
                     'paid_at' => $invoice->paid_at ? date('d/m/y', strtotime($invoice->paid_at)) : null,
                     'sent_at' => $invoice->sent_at,
                     // Additional data for PDF generation
-                    'freelancerName' => trim(($user->userDetails->first_name ?? '') . ' ' . ($user->userDetails->last_name ?? '')) ?: 'Unknown User',
+                    'freelancerName' => trim(($user->freelancerDetails->first_name ?? '') . ' ' . ($user->freelancerDetails->last_name ?? '')) ?: 'Unknown User',
                     'freelancerEmail' => $user->email ?? '',
-                    'freelancerPhone' => $user->userDetails->phone ?? '',
+                    'freelancerPhone' => $user->freelancerDetails->phone ?? '',
                 ];
             });
 

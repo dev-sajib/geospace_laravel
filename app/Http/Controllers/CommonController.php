@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\CompanyDetail;
+use App\Models\FreelancerDetail;
 use App\Models\Notification;
 use App\Models\MenuItem;
 use App\Models\VisitorLog;
@@ -212,7 +213,7 @@ class CommonController extends Controller
                 'RoleId' => 'required|integer|exists:roles,role_id',
                 'AuthProvider' => 'nullable|string|max:50',
 
-                // User details from step 2 (matching user_details schema)
+                // User details from step 2
                 'FirstName' => 'required|string|max:100',
                 'LastName' => 'required|string|max:100',
                 'Phone' => 'nullable|string|max:20',
@@ -256,8 +257,8 @@ class CommonController extends Controller
                     'email_verified_at' => null
                 ]);
 
-                // Create user details matching the schema
-                UserDetail::create([
+                // Create freelancer details
+                FreelancerDetail::create([
                     'user_id' => $user->user_id,
                     'first_name' => $request->input('FirstName'),
                     'last_name' => $request->input('LastName'),
@@ -267,8 +268,11 @@ class CommonController extends Controller
                     'state' => $request->input('State'),
                     'postal_code' => $request->input('PostalCode'),
                     'country' => $request->input('Country'),
+                    'designation' => $request->input('Designation'),
+                    'experience_years' => $request->input('ExperienceYears'),
                     'profile_image' => $request->input('ProfileImage'),
                     'bio' => $request->input('Bio'),
+                    'summary' => $request->input('Summary'),
                     'linkedin_url' => $request->input('LinkedInUrl'),
                     'website_url' => $request->input('WebsiteUrl'),
                     'resume_or_cv' => $request->input('ResumeOrCV'),
@@ -349,7 +353,8 @@ class CommonController extends Controller
 
                 // Contact information
                 'ContactName' => 'nullable|string|max:200',
-                'ContactNumber' => 'nullable|string|max:20'
+                'ContactNumber' => 'nullable|string|max:20',
+                'ContactLinkedin' => 'nullable|string|max:500'
             ]);
 
             if ($validator->fails()) {
@@ -393,6 +398,7 @@ class CommonController extends Controller
                     'industry' => $request->input('Industry'),
                     'company_size' => $request->input('CompanySize'),
                     'website' => $request->input('Website'),
+                    'contact_linkedin' => $request->input('ContactLinkedin'),
                     'description' => $request->input('Description'),
                     'founded_year' => $request->input('FoundedYear'),
                     'headquarters' => $request->input('Headquarters'),
@@ -554,7 +560,43 @@ class CommonController extends Controller
             }
 
             // Load relationships
-            $user->load(['role', 'userDetails', 'companyDetails']);
+            $user->load(['role', 'companyDetails', 'freelancerDetails', 'adminDetails', 'supportDetails']);
+
+            // Get personal data from role-specific table
+            $firstName = null;
+            $lastName = null;
+            $phone = null;
+
+            switch ($user->role_id) {
+                case 1: // Admin
+                    if ($user->adminDetails) {
+                        $firstName = $user->adminDetails->first_name;
+                        $lastName = $user->adminDetails->last_name;
+                        $phone = $user->adminDetails->phone;
+                    }
+                    break;
+                case 2: // Freelancer
+                    if ($user->freelancerDetails) {
+                        $firstName = $user->freelancerDetails->first_name;
+                        $lastName = $user->freelancerDetails->last_name;
+                        $phone = $user->freelancerDetails->phone;
+                    }
+                    break;
+                case 3: // Company
+                    if ($user->companyDetails) {
+                        $firstName = $user->companyDetails->contact_first_name;
+                        $lastName = $user->companyDetails->contact_last_name;
+                        $phone = $user->companyDetails->contact_phone;
+                    }
+                    break;
+                case 4: // Support
+                    if ($user->supportDetails) {
+                        $firstName = $user->supportDetails->first_name;
+                        $lastName = $user->supportDetails->last_name;
+                        $phone = $user->supportDetails->phone;
+                    }
+                    break;
+            }
 
             $response = [
                 'UserId' => $user->user_id,
@@ -565,27 +607,33 @@ class CommonController extends Controller
                 'IsVerified' => $user->is_verified,
                 'IsActive' => $user->is_active,
                 'VerificationStatus' => $user->verification_status,
-                'LastLogin' => $user->last_login
+                'LastLogin' => $user->last_login,
+                'FirstName' => $firstName,
+                'LastName' => $lastName,
+                'Phone' => $phone
             ];
 
-            // Add user details if exists (for freelancers)
-            if ($user->userDetails) {
-                $response['UserDetails'] = [
-                    'FirstName' => $user->userDetails->first_name,
-                    'LastName' => $user->userDetails->last_name,
-                    'Phone' => $user->userDetails->phone,
-                    'Address' => $user->userDetails->address,
-                    'City' => $user->userDetails->city,
-                    'State' => $user->userDetails->state,
-                    'PostalCode' => $user->userDetails->postal_code,
-                    'Country' => $user->userDetails->country,
-                    'ProfileImage' => $user->userDetails->profile_image,
-                    'Bio' => $user->userDetails->bio,
-                    'LinkedInUrl' => $user->userDetails->linkedin_url,
-                    'WebsiteUrl' => $user->userDetails->website_url,
-                    'ResumeOrCV' => $user->userDetails->resume_or_cv,
-                    'HourlyRate' => $user->userDetails->hourly_rate,
-                    'AvailabilityStatus' => $user->userDetails->availability_status
+            // Add freelancer details if exists (for freelancers)
+            if ($user->freelancerDetails) {
+                $response['FreelancerDetails'] = [
+                    'FirstName' => $user->freelancerDetails->first_name,
+                    'LastName' => $user->freelancerDetails->last_name,
+                    'Phone' => $user->freelancerDetails->phone,
+                    'Address' => $user->freelancerDetails->address,
+                    'City' => $user->freelancerDetails->city,
+                    'State' => $user->freelancerDetails->state,
+                    'PostalCode' => $user->freelancerDetails->postal_code,
+                    'Country' => $user->freelancerDetails->country,
+                    'Designation' => $user->freelancerDetails->designation,
+                    'ExperienceYears' => $user->freelancerDetails->experience_years,
+                    'ProfileImage' => $user->freelancerDetails->profile_image,
+                    'Bio' => $user->freelancerDetails->bio,
+                    'Summary' => $user->freelancerDetails->summary,
+                    'LinkedInUrl' => $user->freelancerDetails->linkedin_url,
+                    'WebsiteUrl' => $user->freelancerDetails->website_url,
+                    'ResumeOrCV' => $user->freelancerDetails->resume_or_cv,
+                    'HourlyRate' => $user->freelancerDetails->hourly_rate,
+                    'AvailabilityStatus' => $user->freelancerDetails->availability_status
                 ];
             }
 
@@ -601,7 +649,15 @@ class CommonController extends Controller
                     'Description' => $user->companyDetails->description,
                     'FoundedYear' => $user->companyDetails->founded_year,
                     'Headquarters' => $user->companyDetails->headquarters,
-                    'Logo' => $user->companyDetails->logo
+                    'Logo' => $user->companyDetails->logo,
+                    'ContactFirstName' => $user->companyDetails->contact_first_name,
+                    'ContactLastName' => $user->companyDetails->contact_last_name,
+                    'ContactPhone' => $user->companyDetails->contact_phone,
+                    'Address' => $user->companyDetails->address,
+                    'City' => $user->companyDetails->city,
+                    'State' => $user->companyDetails->state,
+                    'PostalCode' => $user->companyDetails->postal_code,
+                    'Country' => $user->companyDetails->country
                 ];
             }
 
@@ -896,6 +952,308 @@ class CommonController extends Controller
             Log::error('Get user stats error: ' . $e->getMessage());
             return response()->json(
                 MessageHelper::error('Failed to retrieve statistics'),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get all freelancers with their details and average ratings
+     * PUBLIC ENDPOINT - No authentication required
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getFreelancers(Request $request): JsonResponse
+    {
+        try {
+            $limit = $request->query('limit', 20);
+            $offset = $request->query('offset', 0);
+            $role = $request->query('role'); // Filter by user_position (e.g., 'Geologist')
+
+            // Build query for freelancers with their details
+            $query = User::select('users.*')
+                ->where('users.role_id', 2) // Freelancer role
+                ->where('users.is_active', 1)
+                ->where('users.is_verified', 1)
+                ->with(['freelancerDetails', 'role']);
+
+            // Filter by user position/role if specified
+            if ($role) {
+                $query->where('users.user_position', 'LIKE', '%' . $role . '%');
+            }
+
+            $totalCount = $query->count();
+
+            $freelancers = $query->skip($offset)
+                ->take($limit)
+                ->get()
+                ->map(function($user) {
+                    // Calculate average rating from feedback
+                    $avgRating = DB::table('feedback')
+                        ->where('freelancer_id', $user->user_id)
+                        ->selectRaw('AVG((attendance_rating + work_quality_rating + execution_speed_rating + adaptability_rating + general_feedback_rating) / 5) as avg_rating')
+                        ->value('avg_rating');
+
+                    // Get total feedback count
+                    $totalFeedback = DB::table('feedback')
+                        ->where('freelancer_id', $user->user_id)
+                        ->count();
+
+                    // Get expertise
+                    $expertise = DB::table('expertise')
+                        ->where('user_id', $user->user_id)
+                        ->pluck('expertise_name')
+                        ->toArray();
+
+                    $freelancerDetails = $user->freelancerDetails;
+
+                    return [
+                        'UserId' => $user->user_id,
+                        'FirstName' => $freelancerDetails->first_name ?? 'N/A',
+                        'LastName' => $freelancerDetails->last_name ?? 'N/A',
+                        'FullName' => ($freelancerDetails->first_name ?? 'N/A') . ' ' . ($freelancerDetails->last_name ?? ''),
+                        'Email' => $user->email,
+                        'Role' => $user->user_position ?? 'Geologist',
+                        'ProfileImage' => $freelancerDetails->profile_image ?? 'avatar.png',
+                        'Bio' => $freelancerDetails->bio ?? '',
+                        'HourlyRate' => $freelancerDetails->hourly_rate ? floatval($freelancerDetails->hourly_rate) : 0,
+                        'AvailabilityStatus' => $freelancerDetails->availability_status ?? 'Available',
+                        'Rating' => $avgRating ? round(floatval($avgRating), 1) : 0,
+                        'TotalFeedback' => $totalFeedback,
+                        'Expertise' => $expertise,
+                        'VerifiedExpert' => !empty($expertise) ? 'Verified Expert in ' . implode(', ', array_map('ucfirst', $expertise)) : 'Geologist',
+                        'City' => $freelancerDetails->city ?? null,
+                        'Country' => $freelancerDetails->country ?? null,
+                    ];
+                });
+
+            return response()->json(
+                MessageHelper::success('Freelancers retrieved successfully', [
+                    'Freelancers' => $freelancers,
+                    'Total' => $totalCount,
+                    'Limit' => $limit,
+                    'Offset' => $offset
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get freelancers error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve freelancers: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Get single freelancer details with all related data
+     * PUBLIC ENDPOINT - No authentication required
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function getFreelancerById($id): JsonResponse
+    {
+        try {
+            $user = User::where('user_id', $id)
+                ->where('role_id', 2) // Freelancer role
+                ->with(['freelancerDetails', 'role'])
+                ->first();
+
+            if (!$user) {
+                return response()->json(
+                    MessageHelper::notFound('Freelancer not found'),
+                    404
+                );
+            }
+
+            // Calculate average rating from feedback
+            $avgRating = DB::table('feedback')
+                ->where('freelancer_id', $user->user_id)
+                ->selectRaw('AVG((attendance_rating + work_quality_rating + execution_speed_rating + adaptability_rating + general_feedback_rating) / 5) as avg_rating')
+                ->value('avg_rating');
+
+            // Get detailed feedback with company details
+            $feedbacks = DB::table('feedback')
+                ->leftJoin('company_details', 'feedback.company_id', '=', 'company_details.user_id')
+                ->where('freelancer_id', $user->user_id)
+                ->select(
+                    'feedback.feedback_id',
+                    'feedback.contract_id',
+                    'feedback.attendance_rating',
+                    'feedback.attendance_comment',
+                    'feedback.work_quality_rating',
+                    'feedback.work_quality_comment',
+                    'feedback.execution_speed_rating',
+                    'feedback.execution_speed_comment',
+                    'feedback.adaptability_rating',
+                    'feedback.adaptability_comment',
+                    'feedback.general_feedback_rating',
+                    'feedback.general_feedback_comment',
+                    'feedback.created_at',
+                    'company_details.company_name',
+                    'company_details.contact_linkedin'
+                )
+                ->get()
+                ->map(function($feedback) {
+                    return [
+                        'FeedbackId' => $feedback->feedback_id,
+                        'ContractId' => $feedback->contract_id,
+                        'AttendanceRating' => $feedback->attendance_rating,
+                        'AttendanceComment' => $feedback->attendance_comment,
+                        'WorkQualityRating' => $feedback->work_quality_rating,
+                        'WorkQualityComment' => $feedback->work_quality_comment,
+                        'ExecutionSpeedRating' => $feedback->execution_speed_rating,
+                        'ExecutionSpeedComment' => $feedback->execution_speed_comment,
+                        'AdaptabilityRating' => $feedback->adaptability_rating,
+                        'AdaptabilityComment' => $feedback->adaptability_comment,
+                        'GeneralFeedbackRating' => $feedback->general_feedback_rating,
+                        'GeneralFeedbackComment' => $feedback->general_feedback_comment,
+                        'CompanyName' => $feedback->company_name,
+                        'CompanyLinkedin' => $feedback->contact_linkedin,
+                        'CreatedAt' => $feedback->created_at
+                    ];
+                });
+
+            // Get expertise
+            $expertise = DB::table('expertise')
+                ->where('user_id', $user->user_id)
+                ->get(['expertise_id', 'expertise_name'])
+                ->map(function($item) {
+                    return [
+                        'ExpertiseId' => $item->expertise_id,
+                        'ExpertiseName' => $item->expertise_name
+                    ];
+                });
+
+            // Get skills
+            $skills = DB::table('skills')
+                ->where('user_id', $user->user_id)
+                ->get(['skill_id', 'skill_name', 'proficiency_level'])
+                ->map(function($item) {
+                    return [
+                        'SkillId' => $item->skill_id,
+                        'SkillName' => $item->skill_name,
+                        'ProficiencyLevel' => $item->proficiency_level
+                    ];
+                });
+
+            // Get portfolio
+            $portfolio = DB::table('portfolio')
+                ->where('user_id', $user->user_id)
+                ->get(['portfolio_id', 'title', 'description', 'image_url', 'project_url', 'tags'])
+                ->map(function($item) {
+                    return [
+                        'PortfolioId' => $item->portfolio_id,
+                        'Title' => $item->title,
+                        'Description' => $item->description,
+                        'ImageUrl' => $item->image_url,
+                        'ProjectUrl' => $item->project_url,
+                        'Tags' => $item->tags ? json_decode($item->tags) : []
+                    ];
+                });
+
+            // Get education
+            $education = DB::table('education')
+                ->where('user_id', $user->user_id)
+                ->orderBy('end_date', 'desc')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'EducationId' => $item->education_id,
+                        'InstitutionName' => $item->institution_name,
+                        'Degree' => $item->degree,
+                        'FieldOfStudy' => $item->field_of_study,
+                        'StartDate' => $item->start_date,
+                        'EndDate' => $item->end_date,
+                        'IsCurrent' => (bool)$item->is_current,
+                        'Grade' => $item->grade,
+                        'Description' => $item->description
+                    ];
+                });
+
+            // Get work experience
+            $workExperience = DB::table('work_experience')
+                ->where('user_id', $user->user_id)
+                ->orderBy('is_current', 'desc')
+                ->orderBy('end_date', 'desc')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'ExperienceId' => $item->experience_id,
+                        'CompanyName' => $item->company_name,
+                        'Position' => $item->position,
+                        'StartDate' => $item->start_date,
+                        'EndDate' => $item->end_date,
+                        'IsCurrent' => (bool)$item->is_current,
+                        'Location' => $item->location,
+                        'Description' => $item->description
+                    ];
+                });
+
+            // Get certifications
+            $certifications = DB::table('certifications')
+                ->where('user_id', $user->user_id)
+                ->orderBy('issue_date', 'desc')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'CertificationId' => $item->certification_id,
+                        'CertificationName' => $item->certification_name,
+                        'IssuingOrganization' => $item->issuing_organization,
+                        'IssueDate' => $item->issue_date,
+                        'ExpirationDate' => $item->expiration_date,
+                        'CredentialId' => $item->credential_id,
+                        'CredentialUrl' => $item->credential_url
+                    ];
+                });
+
+            $freelancerDetails = $user->freelancerDetails;
+
+            $response = [
+                'UserId' => $user->user_id,
+                'FirstName' => $freelancerDetails->first_name ?? 'N/A',
+                'LastName' => $freelancerDetails->last_name ?? 'N/A',
+                'FullName' => ($freelancerDetails->first_name ?? 'N/A') . ' ' . ($freelancerDetails->last_name ?? ''),
+                'Email' => $user->email,
+                'Role' => $user->user_position ?? 'Geologist',
+                'ProfileImage' => $freelancerDetails->profile_image ?? 'avatar.png',
+                'Bio' => $freelancerDetails->bio ?? '',
+                'Summary' => $freelancerDetails->summary ?? '',
+                'Phone' => $freelancerDetails->phone ?? null,
+                'Address' => $freelancerDetails->address ?? null,
+                'City' => $freelancerDetails->city ?? null,
+                'State' => $freelancerDetails->state ?? null,
+                'Country' => $freelancerDetails->country ?? null,
+                'PostalCode' => $freelancerDetails->postal_code ?? null,
+                'LinkedInUrl' => $freelancerDetails->linkedin_url ?? null,
+                'WebsiteUrl' => $freelancerDetails->website_url ?? null,
+                'HourlyRate' => $freelancerDetails->hourly_rate ? floatval($freelancerDetails->hourly_rate) : 0,
+                'AvailabilityStatus' => $freelancerDetails->availability_status ?? 'Available',
+                'Designation' => $freelancerDetails->designation ?? null,
+                'ExperienceYears' => $freelancerDetails->experience_years ?? null,
+                'Rating' => $avgRating ? round(floatval($avgRating), 1) : 0,
+                'TotalFeedback' => $feedbacks->count(),
+                'Feedbacks' => $feedbacks,
+                'Expertise' => $expertise,
+                'Skills' => $skills,
+                'Portfolio' => $portfolio,
+                'Education' => $education,
+                'WorkExperience' => $workExperience,
+                'Certifications' => $certifications,
+                'IsActive' => (bool)$user->is_active,
+                'IsVerified' => (bool)$user->is_verified
+            ];
+
+            return response()->json(
+                MessageHelper::success('Freelancer details retrieved successfully', $response)
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Get freelancer by ID error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to retrieve freelancer details: ' . $e->getMessage()),
                 500
             );
         }

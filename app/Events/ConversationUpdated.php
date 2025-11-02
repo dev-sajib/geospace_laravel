@@ -75,13 +75,9 @@ class ConversationUpdated implements ShouldBroadcast
 
         $participant = $customer->participant;
 
-        // If it's a User model, get name from UserDetail
+        // If it's a User model, get name from role-specific details
         if ($participant instanceof \App\Models\User) {
-            $userDetail = $participant->userDetails;
-            if ($userDetail) {
-                return trim($userDetail->first_name . ' ' . $userDetail->last_name) ?: $participant->email;
-            }
-            return $participant->email;
+            return $participant->full_name;
         }
 
         // If it's an Admin model, try to get name or email

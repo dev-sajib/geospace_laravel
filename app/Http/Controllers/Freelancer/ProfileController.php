@@ -22,19 +22,19 @@ class ProfileController extends Controller
 
             // Get user basic details
             $user = DB::table('users as u')
-                      ->leftJoin('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                      ->leftJoin('freelancer_details as fd', 'u.user_id', '=', 'fd.user_id')
                       ->where('u.user_id', $userId)
                       ->select(
                           'u.user_id',
                           'u.email',
-                          'ud.first_name',
-                          'ud.last_name',
-                          'ud.country',
-                          'ud.designation',
-                          'ud.hourly_rate',
-                          'ud.profile_image',
-                          'ud.summary',
-                          'ud.experience_years'
+                          'fd.first_name',
+                          'fd.last_name',
+                          'fd.country',
+                          'fd.designation',
+                          'fd.hourly_rate',
+                          'fd.profile_image',
+                          'fd.summary',
+                          'fd.experience_years'
                       )
                       ->first();
 
@@ -175,7 +175,7 @@ class ProfileController extends Controller
 
             DB::beginTransaction();
 
-            // Update user_details
+            // Update freelancer_details
             $updateData = [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
@@ -192,7 +192,7 @@ class ProfileController extends Controller
                 $updateData['profile_image'] = $request->profile_picture;
             }
 
-            DB::table('user_details')->updateOrInsert(
+            DB::table('freelancer_details')->updateOrInsert(
                 ['user_id' => $userId],
                 $updateData
             );

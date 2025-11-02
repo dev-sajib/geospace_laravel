@@ -16,6 +16,9 @@ class CompanyDetail extends Model
     protected $fillable = [
         'user_id',
         'company_name',
+        'contact_first_name',
+        'contact_last_name',
+        'contact_phone',
         'company_type',
         'industry',
         'company_size',
@@ -23,6 +26,11 @@ class CompanyDetail extends Model
         'description',
         'founded_year',
         'headquarters',
+        'address',
+        'city',
+        'state',
+        'postal_code',
+        'country',
         'logo'
     ];
 

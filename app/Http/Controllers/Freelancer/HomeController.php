@@ -18,8 +18,10 @@ class HomeController extends Controller {
         try {
             $users = DB::table( 'users as u' )
                        ->join( 'roles as r', 'u.role_id', '=', 'r.role_id' )
-                       ->leftJoin( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
+                       ->leftJoin( 'freelancer_details as fd', 'u.user_id', '=', 'fd.user_id' )
                        ->leftJoin( 'company_details as cd', 'u.user_id', '=', 'cd.user_id' )
+                       ->leftJoin( 'admin_details as ad', 'u.user_id', '=', 'ad.user_id' )
+                       ->leftJoin( 'support_details as sd', 'u.user_id', '=', 'sd.user_id' )
                        ->select(
                            'u.user_id',
                            'u.email',
@@ -27,8 +29,8 @@ class HomeController extends Controller {
                            'u.last_login',
                            'u.is_active',
                            'r.role_name',
-                           'ud.first_name',
-                           'ud.last_name',
+                           DB::raw('COALESCE(fd.first_name, cd.contact_first_name, ad.first_name, sd.first_name) as first_name'),
+                           DB::raw('COALESCE(fd.last_name, cd.contact_last_name, ad.last_name, sd.last_name) as last_name'),
                            'cd.company_name'
                        )
                        ->where( 'u.is_active', true )
@@ -113,8 +115,8 @@ class HomeController extends Controller {
         try {
             $freelancerId = Auth::id();
 
-            // Get freelancer's skills from user_details summary field
-            $freelancerSkills = DB::table( 'user_details' )
+            // Get freelancer's skills from freelancer_details summary field
+            $freelancerSkills = DB::table( 'freelancer_details' )
                                   ->where( 'user_id', $freelancerId )
                                   ->value( 'summary' );
 
@@ -245,7 +247,7 @@ class HomeController extends Controller {
                                  ->where( 'status', 'Active' )
                                  ->count();
 
-            $hourlyRate = DB::table( 'user_details' )
+            $hourlyRate = DB::table( 'freelancer_details' )
                             ->where( 'user_id', $freelancerId )
                             ->select( 'hourly_rate' )
                             ->get();

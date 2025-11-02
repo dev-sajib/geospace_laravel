@@ -32,12 +32,12 @@ class Admin extends User
 
     /**
      * Get admin's name
-     * Tries to get from userDetails, falls back to email
+     * Tries to get from adminDetails, falls back to email
      */
     public function getNameAttribute(): string
     {
-        if ($this->userDetails) {
-            $fullName = trim($this->userDetails->first_name . ' ' . $this->userDetails->last_name);
+        if ($this->adminDetails) {
+            $fullName = trim($this->adminDetails->first_name . ' ' . $this->adminDetails->last_name);
             if ($fullName) {
                 return $fullName;
             }
