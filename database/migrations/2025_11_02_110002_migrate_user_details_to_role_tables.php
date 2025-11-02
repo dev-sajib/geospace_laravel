@@ -13,6 +13,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Check if user_details table exists before migrating
+        if (!Schema::hasTable('user_details')) {
+            // Table doesn't exist, migration already complete or not needed
+            return;
+        }
+
         // Get all user_details records
         $userDetails = DB::table('user_details')->get();
 
@@ -63,6 +69,31 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Check if user_details table exists for rollback
+        if (!Schema::hasTable('user_details')) {
+            // Table doesn't exist, create it first for rollback
+            Schema::create('user_details', function (Blueprint $table) {
+                $table->increments('user_detail_id');
+                $table->integer('user_id')->unique();
+                $table->string('first_name', 100);
+                $table->string('last_name', 100);
+                $table->string('phone', 20)->nullable();
+                $table->text('address')->nullable();
+                $table->string('city', 100)->nullable();
+                $table->string('state', 100)->nullable();
+                $table->string('postal_code', 20)->nullable();
+                $table->string('country', 100)->nullable();
+                $table->string('profile_image', 500)->nullable();
+                $table->text('bio')->nullable();
+                $table->string('linkedin_url', 500)->nullable();
+                $table->string('website_url', 500)->nullable();
+                $table->string('resume_or_cv', 500)->nullable();
+                $table->decimal('hourly_rate', 10, 2)->nullable();
+                $table->enum('availability_status', ['Available', 'Busy', 'Unavailable'])->default('Available');
+                $table->timestamps();
+            });
+        }
+
         // Restore data from role tables back to user_details
         // Get all users
         $users = DB::table('users')->get();

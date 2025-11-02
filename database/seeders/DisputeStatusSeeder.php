@@ -13,7 +13,7 @@ class DisputeStatusSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('dispute_status')->insert([
+        DB::table('dispute_status')->insertOrIgnore([
             [
                 'status_id' => 1,
                 'status_name' => 'Open',

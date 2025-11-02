@@ -13,7 +13,7 @@ class TimesheetStatusSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('timesheet_status')->insert([
+        DB::table('timesheet_status')->insertOrIgnore([
             [
                 'status_id' => 1,
                 'status_name' => 'Pending',
