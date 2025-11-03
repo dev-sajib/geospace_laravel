@@ -1092,8 +1092,8 @@ class CommonController extends Controller
                     'feedback.general_feedback_rating',
                     'feedback.general_feedback_comment',
                     'feedback.created_at',
-                    'company_details.company_name',
-                    'company_details.contact_linkedin'
+                    'company_details.company_name'
+                    // Temporarily removed: 'company_details.contact_linkedin' - column doesn't exist in Railway DB yet
                 )
                 ->get()
                 ->map(function($feedback) {
@@ -1111,7 +1111,7 @@ class CommonController extends Controller
                         'GeneralFeedbackRating' => $feedback->general_feedback_rating,
                         'GeneralFeedbackComment' => $feedback->general_feedback_comment,
                         'CompanyName' => $feedback->company_name,
-                        'CompanyLinkedin' => $feedback->contact_linkedin,
+                        'CompanyLinkedin' => null, // Temporarily set to null - column doesn't exist in Railway DB yet
                         'CreatedAt' => $feedback->created_at
                     ];
                 });
