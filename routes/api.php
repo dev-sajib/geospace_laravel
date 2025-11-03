@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\CommonController;
 
 /*
@@ -70,6 +71,25 @@ Route::prefix( 'v1' )->group( function () {
         Route::get( 'Freelancers/{id}', 'getFreelancerById' )->name( 'api.freelancers.show' );
 
     } );
+
+    // Temporary migration route for Railway deployment
+    Route::get('run-migrations', function () {
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            $output = Artisan::output();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Migrations completed successfully',
+                'output' => $output
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Migration failed: ' . $e->getMessage()
+            ], 500);
+        }
+    });
 
     // Visitor Logging (Public)
     Route::post( 'LogVisitor', [ CommonController::class, 'logVisitor' ] )->name( 'api.visitor.log' );
