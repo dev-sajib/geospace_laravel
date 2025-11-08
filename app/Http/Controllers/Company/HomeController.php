@@ -35,7 +35,7 @@ class HomeController extends Controller
                                  ->where( 'status', 'Active' )
                                  ->count();
 
-            $hourlyRate = DB::table( 'user_details' )
+            $hourlyRate = DB::table( 'freelancer_details' )
                             ->where( 'user_id', $freelancerId )
                             ->select( 'hourly_rate' )
                             ->get();
@@ -208,7 +208,7 @@ class HomeController extends Controller
     {
         try {
             $freelancers = DB::table('users as u')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('roles as r', 'u.role_id', '=', 'r.role_id')
                 ->leftJoin('contracts as c', function($join) {
                     $join->on('u.user_id', '=', 'c.freelancer_id')
@@ -280,7 +280,7 @@ class HomeController extends Controller
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('company_details as cd', 'c.company_id', '=', 'cd.user_id')
                 ->select(
                     't.*',
@@ -467,9 +467,6 @@ class HomeController extends Controller
             // Get company details
             $companyDetails = CompanyDetail::where('user_id', $user->user_id)->first();
 
-            // Get user details (for contact person information)
-            $userDetails = UserDetail::where('user_id', $user->user_id)->first();
-
             if (!$companyDetails) {
                 return response()->json([
                     'Success' => false,
@@ -480,9 +477,9 @@ class HomeController extends Controller
 
             // Build contact person name, removing default placeholders
             $contactPersonName = null;
-            if ($userDetails) {
-                $firstName = ($userDetails->first_name && $userDetails->first_name !== 'N/A') ? $userDetails->first_name : '';
-                $lastName = ($userDetails->last_name && $userDetails->last_name !== '-') ? $userDetails->last_name : '';
+            if ($companyDetails) {
+                $firstName = ($companyDetails->contact_first_name && $companyDetails->contact_first_name !== 'N/A') ? $companyDetails->contact_first_name : '';
+                $lastName = ($companyDetails->contact_last_name && $companyDetails->contact_last_name !== '-') ? $companyDetails->contact_last_name : '';
                 $contactPersonName = trim($firstName . ' ' . $lastName) ?: null;
             }
 
@@ -499,10 +496,10 @@ class HomeController extends Controller
                 'logo' => $companyDetails->logo, // Return just the path, not full URL
                 'user_email' => $user->email,
                 'contact_person_name' => $contactPersonName,
-                'designation' => $userDetails->designation ?? $user->user_position ?? null,
-                'phone' => $userDetails->phone ?? null,
-                'city' => $userDetails->city ?? null,
-                'country' => $userDetails->country ?? null,
+                'designation' => $user->position ?? null,
+                'phone' => $companyDetails->contact_phone ?? null,
+                'city' => $companyDetails->city ?? null,
+                'country' => $companyDetails->country ?? null,
             ];
 
             return response()->json([
@@ -559,7 +556,12 @@ class HomeController extends Controller
 
             DB::beginTransaction();
 
-            // Update or create company details
+            // Parse contact person name
+            $nameParts = explode(' ', $request->contact_person_name ?? '', 2);
+            $firstName = $nameParts[0] ?? null;
+            $lastName = $nameParts[1] ?? null;
+
+            // Update or create company details including contact information
             $companyDetails = CompanyDetail::updateOrCreate(
                 ['user_id' => $user->user_id],
                 [
@@ -572,45 +574,19 @@ class HomeController extends Controller
                     'founded_year' => $request->founded_year,
                     'headquarters' => $request->headquarters,
                     'logo' => $request->logo,
+                    'contact_first_name' => $firstName,
+                    'contact_last_name' => $lastName,
+                    'contact_phone' => $request->phone,
+                    'city' => $request->city,
+                    'country' => $request->country,
                 ]
             );
 
-            // Update user details if provided
-            if ($request->has('contact_person_name') || $request->has('designation') || $request->has('phone') || $request->has('city') || $request->has('country')) {
-                $nameParts = explode(' ', $request->contact_person_name ?? '', 2);
-                $firstName = $nameParts[0] ?? 'N/A';
-                $lastName = $nameParts[1] ?? '-';
 
-                // Build update data with required fields
-                $userDetailsData = [
-                    'first_name' => $firstName,
-                    'last_name' => $lastName,
-                ];
-
-                // Add optional fields only if they have values
-                if ($request->filled('designation')) {
-                    $userDetailsData['designation'] = $request->designation;
-                }
-                if ($request->filled('phone')) {
-                    $userDetailsData['phone'] = $request->phone;
-                }
-                if ($request->filled('city')) {
-                    $userDetailsData['city'] = $request->city;
-                }
-                if ($request->filled('country')) {
-                    $userDetailsData['country'] = $request->country;
-                }
-
-                UserDetail::updateOrCreate(
-                    ['user_id' => $user->user_id],
-                    $userDetailsData
-                );
-            }
-
-            // Update user position if designation is provided
+            // Update contact designation if provided
             if ($request->has('designation')) {
-                $user->user_position = $request->designation;
-                $user->save();
+                $companyDetails->contact_designation = $request->designation;
+                $companyDetails->save();
             }
 
             DB::commit();
@@ -799,7 +775,7 @@ class HomeController extends Controller
             $completedContracts = DB::table('contracts as c')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->leftJoin('feedback as f', 'c.contract_id', '=', 'f.contract_id')
                 ->select(
                     'c.contract_id',
@@ -974,7 +950,7 @@ class HomeController extends Controller
                 ->join('contracts as c', 'f.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 'f.project_id', '=', 'p.project_id')
                 ->join('users as u', 'f.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->select(
                     'f.feedback_id',
                     'f.contract_id',
@@ -1075,7 +1051,7 @@ class HomeController extends Controller
             // Get freelancers who have worked with this company
             $freelancerProfiles = DB::table('contracts as c')
                 ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->leftJoin('feedback as f', function($join) use ($user) {
                     $join->on('c.freelancer_id', '=', 'f.freelancer_id')

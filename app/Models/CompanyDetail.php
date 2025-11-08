@@ -19,6 +19,7 @@ class CompanyDetail extends Model
         'contact_first_name',
         'contact_last_name',
         'contact_phone',
+        'contact_designation',
         'company_type',
         'industry',
         'company_size',

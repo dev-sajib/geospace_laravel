@@ -210,7 +210,7 @@ class UserManagementController extends \App\Http\Controllers\Controller {
             $userData = [
                 'UserId'       => $user->user_id,
                 'Email'        => $user->email,
-                'UserPosition' => $user->user_position,
+                'UserPosition' => $user->position,
                 'RoleId'       => $user->role_id,
                 'RoleName'     => $user->role->role_name ?? 'N/A',
                 'IsVerified'   => $user->is_verified,

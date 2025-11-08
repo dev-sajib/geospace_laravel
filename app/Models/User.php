@@ -19,7 +19,6 @@ class User extends Authenticatable implements JWTSubject
         'email',
         'password_hash',
         'role_id',
-        'user_position',
         'auth_provider',
         'is_active',
         'is_verified',
@@ -134,6 +133,22 @@ class User extends Authenticatable implements JWTSubject
     }
 
     /**
+     * User expertise relationship
+     */
+    public function expertise()
+    {
+        return $this->hasMany(\App\Models\Expertise::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * User skills relationship
+     */
+    public function skills()
+    {
+        return $this->hasMany(\App\Models\Skill::class, 'user_id', 'user_id');
+    }
+
+    /**
      * Helper methods to get personal data from role-specific tables
      */
 
@@ -204,5 +219,32 @@ class User extends Authenticatable implements JWTSubject
 
         $fullName = trim(($firstName ?? '') . ' ' . ($lastName ?? ''));
         return $fullName ?: $this->email;
+    }
+
+    /**
+     * Get user's position/designation based on role
+     */
+    public function getPositionAttribute(): ?string
+    {
+        switch ($this->role_id) {
+            case 1: // Admin
+                return 'Administrator';
+            case 2: // Freelancer
+                return $this->freelancerDetails->designation ?? null;
+            case 3: // Company
+                return $this->companyDetails->contact_designation ?? null;
+            case 4: // Support
+                return 'Support Agent';
+            default:
+                return 'User';
+        }
+    }
+
+    /**
+     * Get user's role (for backwards compatibility)
+     */
+    public function getRoleAttribute(): ?string
+    {
+        return $this->getPositionAttribute();
     }
 }

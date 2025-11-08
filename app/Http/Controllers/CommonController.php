@@ -122,7 +122,7 @@ class CommonController extends Controller
                         'RoleName' => $user->role->role_name,
                         'IsVerified' => $user->is_verified,
                         'VerificationStatus' => $user->verification_status,
-                        'UserPosition' => $user->user_position
+                        'UserPosition' => $user->position
                     ]
                 ])
             );
@@ -249,7 +249,6 @@ class CommonController extends Controller
                     'email' => $request->input('Email'),
                     'password_hash' => $encryptedPassword,
                     'role_id' => $request->input('RoleId'),
-                    'user_position' => $request->input('UserPosition'),
                     'auth_provider' => $request->input('AuthProvider', 'Manual'),
                     'is_active' => true,
                     'is_verified' => false,
@@ -268,7 +267,7 @@ class CommonController extends Controller
                     'state' => $request->input('State'),
                     'postal_code' => $request->input('PostalCode'),
                     'country' => $request->input('Country'),
-                    'designation' => $request->input('Designation'),
+                    'designation' => $request->input('UserPosition'), // Use UserPosition for designation
                     'experience_years' => $request->input('ExperienceYears'),
                     'profile_image' => $request->input('ProfileImage'),
                     'bio' => $request->input('Bio'),
@@ -383,14 +382,19 @@ class CommonController extends Controller
                     'email' => $request->input('Email'),
                     'password_hash' => $encryptedPassword,
                     'role_id' => $request->input('RoleId'),
-                    'user_position' => $request->input('UserPosition', 'Company Representative'),
                     'auth_provider' => $request->input('AuthProvider', 'Manual'),
                     'is_active' => true,
                     'is_verified' => false,
                     'verification_status' => 'pending'
                 ]);
 
-                // Create company details - matching schema exactly
+                // Parse contact information
+                $contactName = $request->input('ContactName', '');
+                $nameParts = explode(' ', $contactName, 2);
+                $firstName = $nameParts[0] ?? null;
+                $lastName = $nameParts[1] ?? null;
+
+                // Create company details with contact information
                 CompanyDetail::create([
                     'user_id' => $user->user_id,
                     'company_name' => $request->input('CompanyName'),
@@ -402,23 +406,12 @@ class CommonController extends Controller
                     'description' => $request->input('Description'),
                     'founded_year' => $request->input('FoundedYear'),
                     'headquarters' => $request->input('Headquarters'),
-                    'logo' => $request->input('Logo')
+                    'logo' => $request->input('Logo'),
+                    'contact_first_name' => $firstName,
+                    'contact_last_name' => $lastName,
+                    'contact_phone' => $request->input('ContactNumber'),
+                    'contact_designation' => $request->input('UserPosition', 'Company Representative') // Use UserPosition for contact_designation
                 ]);
-
-                // Create user details with contact information
-                if ($request->filled('ContactName') || $request->filled('ContactNumber')) {
-                    $contactName = $request->input('ContactName', '');
-                    $nameParts = explode(' ', $contactName, 2);
-                    $firstName = $nameParts[0] ?? 'N/A';
-                    $lastName = $nameParts[1] ?? '-';
-
-                    UserDetail::create([
-                        'user_id' => $user->user_id,
-                        'first_name' => $firstName,
-                        'last_name' => $lastName,
-                        'phone' => $request->input('ContactNumber')
-                    ]);
-                }
 
                 DB::commit();
 
@@ -603,7 +596,7 @@ class CommonController extends Controller
                 'Email' => $user->email,
                 'RoleId' => $user->role_id,
                 'RoleName' => $user->role->role_name ?? null,
-                'UserPosition' => $user->user_position,
+                'UserPosition' => $user->position,
                 'IsVerified' => $user->is_verified,
                 'IsActive' => $user->is_active,
                 'VerificationStatus' => $user->verification_status,
@@ -969,7 +962,9 @@ class CommonController extends Controller
         try {
             $limit = $request->query('limit', 20);
             $offset = $request->query('offset', 0);
-            $role = $request->query('role'); // Filter by user_position (e.g., 'Geologist')
+            $role = $request->query('role'); // Filter by designation (e.g., 'Geologist')
+            $expertise = $request->query('expertise'); // Filter by expertise_name (e.g., 'Mining')
+            $skill = $request->query('skill'); // Filter by skill_name (e.g., 'Mining Engineer')
 
             // Build query for freelancers with their details
             $query = User::select('users.*')
@@ -980,7 +975,23 @@ class CommonController extends Controller
 
             // Filter by user position/role if specified
             if ($role) {
-                $query->where('users.user_position', 'LIKE', '%' . $role . '%');
+                $query->whereHas('freelancerDetails', function($q) use ($role) {
+                    $q->where('designation', 'LIKE', '%' . $role . '%');
+                });
+            }
+
+            // Filter by expertise if specified
+            if ($expertise) {
+                $query->whereHas('expertise', function($q) use ($expertise) {
+                    $q->where('expertise_name', 'LIKE', '%' . $expertise . '%');
+                });
+            }
+
+            // Filter by skill if specified
+            if ($skill) {
+                $query->whereHas('skills', function($q) use ($skill) {
+                    $q->where('skill_name', 'LIKE', '%' . $skill . '%');
+                });
             }
 
             $totalCount = $query->count();
@@ -1014,7 +1025,7 @@ class CommonController extends Controller
                         'LastName' => $freelancerDetails->last_name ?? 'N/A',
                         'FullName' => ($freelancerDetails->first_name ?? 'N/A') . ' ' . ($freelancerDetails->last_name ?? ''),
                         'Email' => $user->email,
-                        'Role' => $user->user_position ?? 'Geologist',
+                        'Role' => $user->position ?? 'Geologist',
                         'ProfileImage' => $freelancerDetails->profile_image ?? 'avatar.png',
                         'Bio' => $freelancerDetails->bio ?? '',
                         'HourlyRate' => $freelancerDetails->hourly_rate ? floatval($freelancerDetails->hourly_rate) : 0,
@@ -1217,7 +1228,7 @@ class CommonController extends Controller
                 'LastName' => $freelancerDetails->last_name ?? 'N/A',
                 'FullName' => ($freelancerDetails->first_name ?? 'N/A') . ' ' . ($freelancerDetails->last_name ?? ''),
                 'Email' => $user->email,
-                'Role' => $user->user_position ?? 'Geologist',
+                'Role' => $user->position ?? 'Geologist',
                 'ProfileImage' => $freelancerDetails->profile_image ?? 'avatar.png',
                 'Bio' => $freelancerDetails->bio ?? '',
                 'Summary' => $freelancerDetails->summary ?? '',
