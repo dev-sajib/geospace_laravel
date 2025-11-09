@@ -197,6 +197,14 @@ class ContractManagementController extends Controller
                 'updated_at' => now()
             ]);
 
+            // Update project status to "In Progress" when contract is created
+            DB::table('projects')
+                ->where('project_id', $request->project_id)
+                ->update([
+                    'status' => 'In Progress',
+                    'updated_at' => now()
+                ]);
+
             // Log activity
             DB::table('activity_logs')->insert([
                 'user_id' => auth()->id(),
