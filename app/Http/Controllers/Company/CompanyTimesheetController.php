@@ -36,7 +36,7 @@ class CompanyTimesheetController extends Controller
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->where('t.company_id', $companyId)
                 ->select(
@@ -79,7 +79,7 @@ class CompanyTimesheetController extends Controller
     {
         try {
             $companyUserId = Auth::id();
-            
+
             $companyId = DB::table('company_details')
                 ->where('user_id', $companyUserId)
                 ->value('company_id');
@@ -87,7 +87,7 @@ class CompanyTimesheetController extends Controller
             $timesheets = DB::table('timesheets as t')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->where('t.company_id', $companyId)
                 ->where('ts.status_name', 'Pending')
@@ -134,7 +134,7 @@ class CompanyTimesheetController extends Controller
                 ->join('contracts as c', 't.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->where('t.timesheet_id', $id)
                 ->where('t.company_id', $companyId)
@@ -167,11 +167,21 @@ class CompanyTimesheetController extends Controller
             foreach ($days as $day) {
                 $day->comments = DB::table('timesheet_day_comments as tdc')
                     ->leftJoin('users as u', 'tdc.comment_by', '=', 'u.user_id')
-                    ->leftJoin('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                    ->leftJoin('freelancer_details as fd', function($join) {
+                        $join->on('u.user_id', '=', 'fd.user_id')
+                             ->where('u.role_id', '=', 2); // Freelancer role
+                    })
+                    ->leftJoin('company_details as cd', function($join) {
+                        $join->on('u.user_id', '=', 'cd.user_id')
+                             ->where('u.role_id', '=', 3); // Company role
+                    })
                     ->where('tdc.day_id', $day->day_id)
                     ->select(
                         'tdc.*',
-                        DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as commenter_name")
+                        DB::raw("COALESCE(
+                            CONCAT(fd.first_name, ' ', fd.last_name),
+                            cd.company_name
+                        ) as commenter_name")
                     )
                     ->orderBy('tdc.created_at', 'desc')
                     ->get();
@@ -265,11 +275,11 @@ class CompanyTimesheetController extends Controller
             // Get comment with user details
             $comment = DB::table('timesheet_day_comments as tdc')
                 ->join('users as u', 'tdc.comment_by', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('company_details as cd', 'u.user_id', '=', 'cd.user_id')
                 ->where('tdc.comment_id', $commentId)
                 ->select(
                     'tdc.*',
-                    DB::raw("CONCAT(ud.first_name, ' ', ud.last_name) as commenter_name")
+                    'cd.company_name as commenter_name'
                 )
                 ->first();
 
@@ -540,7 +550,7 @@ class CompanyTimesheetController extends Controller
             $timesheets = DB::table('timesheets as t')
                 ->join('projects as p', 't.project_id', '=', 'p.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->join('timesheet_status as ts', 't.status_id', '=', 'ts.status_id')
                 ->leftJoin('invoices as i', 't.timesheet_id', '=', 'i.timesheet_id')
                 ->where('t.company_id', $companyId)
@@ -710,7 +720,7 @@ class CompanyTimesheetController extends Controller
                 ->join('timesheets as t', 'i.timesheet_id', '=', 't.timesheet_id')
                 ->join('projects as proj', 't.project_id', '=', 'proj.project_id')
                 ->join('users as u', 't.freelancer_id', '=', 'u.user_id')
-                ->join('user_details as ud', 'u.user_id', '=', 'ud.user_id')
+                ->join('freelancer_details as ud', 'u.user_id', '=', 'ud.user_id')
                 ->where('i.company_id', $companyId)
                 ->select(
                     'p.*',

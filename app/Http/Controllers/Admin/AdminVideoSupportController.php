@@ -17,10 +17,10 @@ class AdminVideoSupportController extends Controller
     {
         try {
             $requests = VideoSupportRequest::with([
-                'freelancer.userDetails',
+                'freelancer.freelancerDetails',
                 'freelancer.companyDetails',
                 'freelancer.role',
-                'company.userDetails',
+                'company.freelancerDetails',
                 'company.companyDetails',
                 'company.role'
             ])
@@ -38,14 +38,12 @@ class AdminVideoSupportController extends Controller
                 if ($request->freelancer_id && $request->freelancer) {
                     $user = $request->freelancer;
 
-                    // Try to get name from userDetails first
-                    if ($user->userDetails) {
-                        $firstName = $user->userDetails->first_name ?? '';
-                        $lastName = $user->userDetails->last_name ?? '';
-                        $senderName = trim($firstName . ' ' . $lastName);
-                    }
+                    // Use magic getters that pull from appropriate detail table based on role
+                    $firstName = $user->first_name ?? '';
+                    $lastName = $user->last_name ?? '';
+                    $senderName = trim($firstName . ' ' . $lastName);
 
-                    // If no name from userDetails, try companyDetails (in case freelancer also has company details)
+                    // If no name from details, try company name if they have company details
                     if (!$senderName && $user->companyDetails) {
                         $senderName = $user->companyDetails->company_name ?? '';
                     }
@@ -58,15 +56,15 @@ class AdminVideoSupportController extends Controller
                 elseif ($request->company_id && $request->company) {
                     $user = $request->company;
 
-                    // Try to get company name from companyDetails
+                    // Try to get company name from companyDetails first
                     if ($user->companyDetails) {
                         $senderName = $user->companyDetails->company_name ?? '';
                     }
 
-                    // If no name from companyDetails, try userDetails
-                    if (!$senderName && $user->userDetails) {
-                        $firstName = $user->userDetails->first_name ?? '';
-                        $lastName = $user->userDetails->last_name ?? '';
+                    // If no company name, use magic getters for first/last name
+                    if (!$senderName) {
+                        $firstName = $user->first_name ?? '';
+                        $lastName = $user->last_name ?? '';
                         $senderName = trim($firstName . ' ' . $lastName);
                     }
 
@@ -183,10 +181,10 @@ class AdminVideoSupportController extends Controller
     {
         try {
             $request = VideoSupportRequest::with([
-                'freelancer.userDetails',
+                'freelancer.freelancerDetails',
                 'freelancer.companyDetails',
                 'freelancer.role',
-                'company.userDetails',
+                'company.freelancerDetails',
                 'company.companyDetails',
                 'company.role'
             ])->findOrFail($requestId);
@@ -199,12 +197,12 @@ class AdminVideoSupportController extends Controller
             if ($request->freelancer_id && $request->freelancer) {
                 $user = $request->freelancer;
 
-                if ($user->userDetails) {
-                    $firstName = $user->userDetails->first_name ?? '';
-                    $lastName = $user->userDetails->last_name ?? '';
-                    $userName = trim($firstName . ' ' . $lastName);
-                }
+                // Use magic getters that pull from appropriate detail table based on role
+                $firstName = $user->first_name ?? '';
+                $lastName = $user->last_name ?? '';
+                $userName = trim($firstName . ' ' . $lastName);
 
+                // If no name from details, try company name if they have company details
                 if (!$userName && $user->companyDetails) {
                     $userName = $user->companyDetails->company_name ?? '';
                 }
@@ -217,13 +215,15 @@ class AdminVideoSupportController extends Controller
             elseif ($request->company_id && $request->company) {
                 $user = $request->company;
 
+                // Try to get company name from companyDetails first
                 if ($user->companyDetails) {
                     $userName = $user->companyDetails->company_name ?? '';
                 }
 
-                if (!$userName && $user->userDetails) {
-                    $firstName = $user->userDetails->first_name ?? '';
-                    $lastName = $user->userDetails->last_name ?? '';
+                // If no company name, use magic getters for first/last name
+                if (!$userName) {
+                    $firstName = $user->first_name ?? '';
+                    $lastName = $user->last_name ?? '';
                     $userName = trim($firstName . ' ' . $lastName);
                 }
 

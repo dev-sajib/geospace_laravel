@@ -240,11 +240,4 @@ class User extends Authenticatable implements JWTSubject
         }
     }
 
-    /**
-     * Get user's role (for backwards compatibility)
-     */
-    public function getRoleAttribute(): ?string
-    {
-        return $this->getPositionAttribute();
-    }
 }

@@ -97,6 +97,13 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::get('tickets/{ticketId}', 'getTicketDetails')->name('tickets.details');
     });
 
+    // DROPDOWN DATA FOR ASSIGNMENTS
+    Route::controller(ContractManagementController::class)->group(function () {
+        Route::get('projects', 'getProjects')->name('projects.list');
+        Route::get('freelancers', 'getFreelancers')->name('freelancers.list');
+        Route::get('companies', 'getCompanies')->name('companies.list');
+    });
+
     // CHAT SYSTEM
     Route::controller(\App\Http\Controllers\Api\Admin\ChatController::class)->prefix('chat')->name('chat.')->group(function () {
         Route::get('conversations', 'getConversations')->name('conversations.list');

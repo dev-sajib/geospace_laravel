@@ -215,7 +215,7 @@ class DisputeController extends Controller
                 ->join('contracts as c', 'dt.contract_id', '=', 'c.contract_id')
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
-                ->join('user_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
+                ->join('freelancer_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
                 ->join('dispute_status as ds', 'dt.status_id', '=', 'ds.status_id')
                 ->where('c.company_id', $company->company_id)
                 ->select(
@@ -261,7 +261,7 @@ class DisputeController extends Controller
                 ->join('projects as p', 'c.project_id', '=', 'p.project_id')
                 ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
                 ->join('users as creator', 'dt.created_by', '=', 'creator.user_id')
-                ->join('user_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
+                ->join('freelancer_details as freelancer_ud', 'c.freelancer_id', '=', 'freelancer_ud.user_id')
                 ->join('dispute_status as ds', 'dt.status_id', '=', 'ds.status_id')
                 ->leftJoin('user_details as agent_ud', 'dt.assigned_to', '=', 'agent_ud.user_id')
                 ->select(

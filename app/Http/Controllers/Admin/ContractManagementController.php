@@ -28,7 +28,7 @@ class ContractManagementController extends Controller
                        ->leftJoin('company_details as cd', 'c.company_id', '=', 'cd.company_id')
                        ->leftJoin('users as cu', 'cd.user_id', '=', 'cu.user_id')
                        ->leftJoin('users as fu', 'c.freelancer_id', '=', 'fu.user_id')
-                       ->leftJoin('user_details as fud', 'fu.user_id', '=', 'fud.user_id')
+                       ->leftJoin('freelancer_details as fud', 'fu.user_id', '=', 'fud.user_id')
                        ->select(
                            'c.*',
                            'p.project_title',
@@ -71,7 +71,7 @@ class ContractManagementController extends Controller
                           ->leftJoin('company_details as cd', 'c.company_id', '=', 'cd.company_id')
                           ->leftJoin('users as cu', 'cd.user_id', '=', 'cu.user_id')
                           ->leftJoin('users as fu', 'c.freelancer_id', '=', 'fu.user_id')
-                          ->leftJoin('user_details as fud', 'fu.user_id', '=', 'fud.user_id')
+                          ->leftJoin('freelancer_details as fud', 'fu.user_id', '=', 'fud.user_id')
                           ->select(
                               'c.*',
                               'p.project_title',
@@ -396,6 +396,125 @@ class ContractManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve statistics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get active projects for dropdown
+     * GET /api/v1/admin/projects
+     */
+    public function getProjects()
+    {
+        try {
+            $projects = DB::table('projects as p')
+                          ->leftJoin('company_details as cd', 'p.company_id', '=', 'cd.company_id')
+                          ->select(
+                              'p.project_id',
+                              'p.project_title',
+                              'p.project_type',
+                              'p.budget',
+                              'p.location',
+                              'p.status',
+                              'cd.company_name'
+                          )
+                          ->where('p.status', '!=', 'Cancelled')
+                          ->orderBy('p.created_at', 'desc')
+                          ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Projects retrieved successfully',
+                'data' => $projects
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve projects',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get freelancers for dropdown
+     * GET /api/v1/admin/freelancers
+     */
+    public function getFreelancers()
+    {
+        try {
+            $freelancers = DB::table('users as u')
+                             ->leftJoin('freelancer_details as fd', 'u.user_id', '=', 'fd.user_id')
+                             ->select(
+                                 'u.user_id',
+                                 'fd.freelancer_detail_id',
+                                 'fd.first_name',
+                                 'fd.last_name',
+                                 'fd.designation',
+                                 'fd.hourly_rate',
+                                 'fd.availability_status',
+                                 'u.email',
+                                 'u.is_active'
+                             )
+                             ->where('u.role_id', 2) // Freelancer role
+                             ->where('u.is_active', true)
+                             ->where('u.verification_status', 'verified')
+                             ->orderBy('fd.first_name')
+                             ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Freelancers retrieved successfully',
+                'data' => $freelancers
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve freelancers',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get companies for dropdown
+     * GET /api/v1/admin/companies
+     */
+    public function getCompanies()
+    {
+        try {
+            $companies = DB::table('company_details as cd')
+                           ->leftJoin('users as u', 'cd.user_id', '=', 'u.user_id')
+                           ->select(
+                               'cd.company_id',
+                               'cd.company_name',
+                               'cd.company_type',
+                               'cd.industry',
+                               'cd.company_size',
+                               'cd.city',
+                               'cd.country',
+                               'u.email',
+                               'u.is_active'
+                           )
+                           ->where('u.role_id', 3) // Company role
+                           ->where('u.is_active', true)
+                           ->where('u.verification_status', 'verified')
+                           ->orderBy('cd.company_name')
+                           ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Companies retrieved successfully',
+                'data' => $companies
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve companies',
                 'error' => $e->getMessage()
             ], 500);
         }
