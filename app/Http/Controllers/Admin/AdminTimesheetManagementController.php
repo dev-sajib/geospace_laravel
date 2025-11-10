@@ -1058,11 +1058,18 @@ class AdminTimesheetManagementController extends Controller {
                 ], 404 );
             }
 
-            // Update payment status to completed
+            // Update company_status in invoices table to completed
+            DB::table( 'invoices' )
+              ->where( 'invoice_id', $payment->invoice_id )
+              ->update( [
+                  'company_status' => 'complete',
+                  'updated_at' => now()
+              ] );
+
+            // Update payment verification details
             DB::table( 'payments' )
               ->where( 'payment_id', $paymentId )
               ->update( [
-                  'status'     => 'Completed',
                   'verified_by' => Auth::id(),
                   'verified_at' => now(),
                   'verification_notes' => $request->verification_notes,
@@ -1152,6 +1159,57 @@ class AdminTimesheetManagementController extends Controller {
             return response()->json( [
                 'success' => false,
                 'message' => 'Failed to retrieve invoice',
+                'error'   => $e->getMessage()
+            ], 500 );
+        }
+    }
+
+    /**
+     * Get transaction overview list - payments filtered by payment_type = 'Company_to_Platform'
+     * GET /api/v1/admin/TransactionOverviewList
+     */
+    public function transactionOverviewList( Request $request ) {
+        try {
+            $query = DB::table( 'payments as p' )
+                       ->join( 'invoices as i', 'p.invoice_id', '=', 'i.invoice_id' )
+                       ->join( 'timesheets as t', 'i.timesheet_id', '=', 't.timesheet_id' )
+                       ->join( 'company_details as cd', 'i.company_id', '=', 'cd.company_id' )
+                       ->join( 'projects as proj', 't.project_id', '=', 'proj.project_id' )
+                       ->join( 'users as u', 't.freelancer_id', '=', 'u.user_id' )
+                       ->join( 'freelancer_details as fd', 'u.user_id', '=', 'fd.user_id' )
+                       ->select(
+                           'p.payment_id as TransactionId',
+                           'p.payment_date as PaymentDate',
+                           'p.payment_type as TransactionType',
+                           'p.amount as Amount',
+                           'cd.company_name as FromCompany',
+                           DB::raw( "CONCAT(fd.first_name, ' ', fd.last_name) as ToFreelancer" ),
+                           'i.company_status as Status',
+                           'i.invoice_number',
+                           't.start_date',
+                           't.end_date',
+                           't.total_hours',
+                           'proj.project_title'
+                       )
+                       ->where( 'p.payment_type', 'Company_to_Platform' )
+                       ->where( 'i.company_status', 'pending' )
+                       ->orderBy( 'p.created_at', 'desc' );
+
+            // Optional status filter
+            if ( $request->has( 'status' ) && $request->status ) {
+                $query->where( 'p.status', $request->status );
+            }
+
+            $perPage = $request->input( 'per_page', 20 );
+            $payments = $query->paginate( $perPage );
+
+            // Return the data directly as an array to match frontend expectations
+            return response()->json( $payments->items(), 200 );
+
+        } catch ( Exception $e ) {
+            return response()->json( [
+                'success' => false,
+                'message' => 'Failed to retrieve transaction overview',
                 'error'   => $e->getMessage()
             ], 500 );
         }

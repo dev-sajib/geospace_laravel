@@ -100,6 +100,69 @@ class FreelancerInvoiceController extends Controller
     }
 
     /**
+     * Get invoice details for PDF generation
+     */
+    public function getInvoiceDetails(Request $request)
+    {
+        try {
+            $request->validate([
+                'invoice_id' => 'required|integer'
+            ]);
+
+            $user = Auth::user();
+            $user->load('freelancerDetails');
+            $freelancerId = $user->user_id;
+
+            $invoice = Invoice::with([
+                'contract.project',
+                'company',
+                'timesheet'
+            ])->where('invoice_id', $request->invoice_id)
+              ->where('freelancer_id', $freelancerId)
+              ->first();
+
+            if (!$invoice) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invoice not found'
+                ], 404);
+            }
+
+            $invoiceData = [
+                'invoice_id' => $invoice->invoice_id,
+                'invoice_number' => $invoice->invoice_number,
+                'projectName' => $invoice->contract->project->project_title ?? 'N/A',
+                'companyName' => $invoice->company->company_name ?? 'N/A',
+                'amountRaw' => $invoice->total_amount,
+                'currency' => $invoice->currency,
+                'dueDate' => $invoice->due_date ? date('Y-m-d', strtotime($invoice->due_date)) : null,
+                'invoiceDate' => date('Y-m-d', strtotime($invoice->invoice_date)),
+                'paymentStatus' => $invoice->status,
+                'total_hours' => $invoice->total_hours,
+                'hourly_rate' => $invoice->hourly_rate,
+                'subtotal' => $invoice->subtotal,
+                'tax_amount' => $invoice->tax_amount,
+                'paid_at' => $invoice->paid_at ? date('Y-m-d', strtotime($invoice->paid_at)) : null,
+                'freelancerName' => trim(($user->freelancerDetails->first_name ?? '') . ' ' . ($user->freelancerDetails->last_name ?? '')) ?: 'Unknown User',
+                'freelancerEmail' => $user->email ?? '',
+                'freelancerPhone' => $user->freelancerDetails->phone ?? '',
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $invoiceData
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching freelancer invoice details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch invoice details'
+            ], 500);
+        }
+    }
+
+    /**
      * Helper function to convert month name to number
      */
     private function getMonthNumber($monthName)

@@ -19,7 +19,7 @@ class UserManagementController extends \App\Http\Controllers\Controller {
      */
     public function verifiedUserList( Request $request ): JsonResponse {
         try {
-            $users = User::with( [ 'userDetails', 'companyDetails', 'role' ] )
+            $users = User::with( [ 'freelancerDetails', 'adminDetails', 'supportDetails', 'companyDetails', 'role' ] )
                          ->where( 'is_active', true )
                          ->where( 'verification_status', 'verified' )
                          ->where( 'role_id', '!=', 1 )
@@ -28,13 +28,26 @@ class UserManagementController extends \App\Http\Controllers\Controller {
                          ->map( function ( $user ) {
                              $userName = 'N/A';
 
-                             if ( $user->userDetails ) {
-                                 $firstName = trim( $user->userDetails->first_name ?? '' );
-                                 $lastName  = trim( $user->userDetails->last_name ?? '' );
+                             // Get name based on user role
+                             if ( $user->role_id == 2 && $user->freelancerDetails ) {
+                                 $firstName = trim( $user->freelancerDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->freelancerDetails->last_name ?? '' );
                                  if ( $firstName || $lastName ) {
                                      $userName = trim( $firstName . ' ' . $lastName );
                                  }
-                             } elseif ( $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
+                             } elseif ( $user->role_id == 1 && $user->adminDetails ) {
+                                 $firstName = trim( $user->adminDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->adminDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 4 && $user->supportDetails ) {
+                                 $firstName = trim( $user->supportDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->supportDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 3 && $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
                                  $userName = $user->companyDetails->company_name;
                              }
 
@@ -71,7 +84,7 @@ class UserManagementController extends \App\Http\Controllers\Controller {
      */
     public function pendingVerificationList( Request $request ): JsonResponse {
         try {
-            $users = User::with( [ 'userDetails', 'companyDetails', 'role' ] )
+            $users = User::with( [ 'freelancerDetails', 'adminDetails', 'supportDetails', 'companyDetails', 'role' ] )
                          ->where( 'verification_status', 'pending' )  // FIXED: Only check is_verified
                          ->where( 'is_active', true )      // Must be active to be pending
                          ->where( 'role_id', '!=', 1 )
@@ -80,13 +93,26 @@ class UserManagementController extends \App\Http\Controllers\Controller {
                          ->map( function ( $user ) {
                              $userName = 'N/A';
 
-                             if ( $user->userDetails ) {
-                                 $firstName = trim( $user->userDetails->first_name ?? '' );
-                                 $lastName  = trim( $user->userDetails->last_name ?? '' );
+                             // Get name based on user role
+                             if ( $user->role_id == 2 && $user->freelancerDetails ) {
+                                 $firstName = trim( $user->freelancerDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->freelancerDetails->last_name ?? '' );
                                  if ( $firstName || $lastName ) {
                                      $userName = trim( $firstName . ' ' . $lastName );
                                  }
-                             } elseif ( $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
+                             } elseif ( $user->role_id == 1 && $user->adminDetails ) {
+                                 $firstName = trim( $user->adminDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->adminDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 4 && $user->supportDetails ) {
+                                 $firstName = trim( $user->supportDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->supportDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 3 && $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
                                  $userName = $user->companyDetails->company_name;
                              }
 
@@ -101,8 +127,8 @@ class UserManagementController extends \App\Http\Controllers\Controller {
                                  'Type'        => $user->role->role_name ?? 'N/A',
                                  'Status'      => 'Pending',  // FIXED: Always pending if not verified
                                  'SubmittedAt' => $user->created_at->format( 'Y-m-d H:i:s' ),
-                                 'HasDetails'  => $user->userDetails !== null || $user->companyDetails !== null,
-                                 'Action'      => ( $user->userDetails || $user->companyDetails )
+                                 'HasDetails'  => $user->freelancerDetails !== null || $user->adminDetails !== null || $user->supportDetails !== null || $user->companyDetails !== null,
+                                 'Action'      => ( $user->freelancerDetails || $user->adminDetails || $user->supportDetails || $user->companyDetails )
                                      ? 'Review Documents'
                                      : 'Validate Account'
                              ];
@@ -128,20 +154,33 @@ class UserManagementController extends \App\Http\Controllers\Controller {
      */
     public function suspendedAccountsList( Request $request ): JsonResponse {
         try {
-            $users = User::with( [ 'userDetails', 'companyDetails', 'role' ] )
+            $users = User::with( [ 'freelancerDetails', 'adminDetails', 'supportDetails', 'companyDetails', 'role' ] )
                          ->where( 'is_active', false )  // FIXED: Only check is_active
                          ->orderBy( 'created_at', 'desc' )
                          ->get()
                          ->map( function ( $user ) {
                              $userName = 'N/A';
 
-                             if ( $user->userDetails ) {
-                                 $firstName = trim( $user->userDetails->first_name ?? '' );
-                                 $lastName  = trim( $user->userDetails->last_name ?? '' );
+                             // Get name based on user role
+                             if ( $user->role_id == 2 && $user->freelancerDetails ) {
+                                 $firstName = trim( $user->freelancerDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->freelancerDetails->last_name ?? '' );
                                  if ( $firstName || $lastName ) {
                                      $userName = trim( $firstName . ' ' . $lastName );
                                  }
-                             } elseif ( $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
+                             } elseif ( $user->role_id == 1 && $user->adminDetails ) {
+                                 $firstName = trim( $user->adminDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->adminDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 4 && $user->supportDetails ) {
+                                 $firstName = trim( $user->supportDetails->first_name ?? '' );
+                                 $lastName  = trim( $user->supportDetails->last_name ?? '' );
+                                 if ( $firstName || $lastName ) {
+                                     $userName = trim( $firstName . ' ' . $lastName );
+                                 }
+                             } elseif ( $user->role_id == 3 && $user->companyDetails && ! empty( $user->companyDetails->company_name ) ) {
                                  $userName = $user->companyDetails->company_name;
                              }
 
@@ -203,7 +242,6 @@ class UserManagementController extends \App\Http\Controllers\Controller {
                 );
             }
 
-            $details = $user->userDetails;
             $companyDetails = $user->companyDetails;
 
             // Base user data
@@ -220,6 +258,7 @@ class UserManagementController extends \App\Http\Controllers\Controller {
 
             // Add freelancer-specific details if role is Freelancer (role_id = 2)
             if ($user->role_id == 2) {
+                $details = $user->freelancerDetails;
                 $userData = array_merge($userData, [
                     'FirstName'    => $details?->first_name ?? 'N/A',
                     'LastName'     => $details?->last_name ?? 'N/A',
@@ -237,6 +276,26 @@ class UserManagementController extends \App\Http\Controllers\Controller {
                     'HourlyRate'   => $details?->hourly_rate ?? 0,
                     'LinkedInUrl'  => $details?->linkedin_url ?? 'N/A',
                     'Bio'          => $details?->bio ?? 'N/A'
+                ]);
+            }
+
+            // Add admin-specific details if role is Admin (role_id = 1)
+            if ($user->role_id == 1) {
+                $details = $user->adminDetails;
+                $userData = array_merge($userData, [
+                    'FirstName'    => $details?->first_name ?? 'N/A',
+                    'LastName'     => $details?->last_name ?? 'N/A',
+                    'Phone'        => $details?->phone ?? 'N/A'
+                ]);
+            }
+
+            // Add support-specific details if role is Support (role_id = 4)
+            if ($user->role_id == 4) {
+                $details = $user->supportDetails;
+                $userData = array_merge($userData, [
+                    'FirstName'    => $details?->first_name ?? 'N/A',
+                    'LastName'     => $details?->last_name ?? 'N/A',
+                    'Phone'        => $details?->phone ?? 'N/A'
                 ]);
             }
 

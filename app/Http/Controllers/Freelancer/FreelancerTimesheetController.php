@@ -83,7 +83,7 @@ class FreelancerTimesheetController extends Controller {
                            ->join( 'projects as p', 'c.project_id', '=', 'p.project_id' )
                            ->join( 'company_details as cd', 'c.company_id', '=', 'cd.company_id' )
                            ->where( 'c.freelancer_id', $freelancerId )
-                           ->where( 'c.status', 'Active' )
+                           ->where( 'c.status', 'Completed' )
                            ->select(
                                'c.contract_id',
                                'c.project_id',
@@ -95,7 +95,7 @@ class FreelancerTimesheetController extends Controller {
                            ->get();
 
             // Get freelancer hourly rate
-            $freelancerRate = DB::table( 'user_details' )
+            $freelancerRate = DB::table( 'freelancer_details' )
                                 ->where( 'user_id', $freelancerId )
                                 ->value( 'hourly_rate' );
 
@@ -381,7 +381,7 @@ class FreelancerTimesheetController extends Controller {
             foreach ( $days as $day ) {
                 $day->comments = DB::table( 'timesheet_day_comments as tdc' )
                                    ->leftJoin( 'users as u', 'tdc.comment_by', '=', 'u.user_id' )
-                                   ->leftJoin( 'user_details as ud', 'u.user_id', '=', 'ud.user_id' )
+                                   ->leftJoin( 'freelancer_details as ud', 'u.user_id', '=', 'ud.user_id' )
                                    ->where( 'tdc.day_id', $day->day_id )
                                    ->select(
                                        'tdc.*',

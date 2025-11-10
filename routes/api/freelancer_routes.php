@@ -6,6 +6,7 @@ use App\Http\Controllers\Freelancer\FreelancerTimesheetController;
 use App\Http\Controllers\Freelancer\FreelancerInvoiceController;
 use App\Http\Controllers\Freelancer\VideoSupportController;
 use App\Http\Controllers\Freelancer\ProfileController;
+use App\Http\Controllers\Freelancer\BankInformationController;
 use App\Http\Controllers\DisputeController;
 
 Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->group(function () {
@@ -34,6 +35,15 @@ Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->
         Route::put('/expertise-skills', 'updateExpertiseSkills')->name('expertise-skills.update');
     });
 
+    // BANK INFORMATION MANAGEMENT
+    Route::controller(BankInformationController::class)->prefix('bank-information')->name('bank-information.')->group(function () {
+        Route::get('/', 'index')->name('list');
+        Route::post('/', 'store')->name('store');
+        Route::put('/{id}', 'update')->name('update');
+        Route::delete('/{id}', 'destroy')->name('delete');
+        Route::patch('/{id}/set-primary', 'setPrimary')->name('set-primary');
+    });
+
     // TIMESHEET MANAGEMENT
     Route::controller(FreelancerTimesheetController::class)->prefix('timesheets')->name('timesheets.')->group(function () {
         Route::get('/', 'index')->name('index');
@@ -49,6 +59,7 @@ Route::prefix('freelancer')->middleware(['auth:api'])->name('api.freelancer.')->
     // INVOICE MANAGEMENT
     Route::controller(FreelancerInvoiceController::class)->prefix('invoices')->name('invoices.')->group(function () {
         Route::get('/', 'getInvoices')->name('list');
+        Route::get('{invoice_id}/details', 'getInvoiceDetails')->name('details');
     });
 
     // VIDEO SUPPORT MANAGEMENT

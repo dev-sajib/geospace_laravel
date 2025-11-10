@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class HomeController extends Controller
 {
@@ -137,6 +138,8 @@ class HomeController extends Controller
                     'p.status as project_status',
                     'p.updated_at',
                     'cd.logo',
+                    'c.contract_id',
+                    'c.status as contract_status',
                     'c.start_date',
                     'c.end_date'
                 )
@@ -182,6 +185,9 @@ class HomeController extends Controller
                     'lastUpdate' => $project->updated_at ? \Carbon\Carbon::parse($project->updated_at)->format('d F, Y') : 'N/A',
                     'progress' => $progress,
                     'status' => $status,
+                    'contract_id' => $project->contract_id,
+                    'contract_status' => $project->contract_status,
+                    'contract_title' => $project->project_title, // Using project title as contract title for modal display
                 ];
             });
 
@@ -1122,5 +1128,153 @@ class HomeController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Update contract status and send email notification to freelancer
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function updateContractStatus(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'contract_id' => 'required|integer|exists:contracts,contract_id',
+                'status' => 'required|string|in:Pending,Active,Completed,Cancelled,Disputed'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(
+                    MessageHelper::validationError($validator->errors()->toArray()),
+                    422
+                );
+            }
+
+            // Get contract details
+            $contract = DB::table('contracts as c')
+                ->join('projects as p', 'c.project_id', '=', 'p.project_id')
+                ->join('users as u', 'c.freelancer_id', '=', 'u.user_id')
+                ->join('freelancer_details as fd', 'u.user_id', '=', 'fd.user_id')
+                ->join('company_details as cd', 'c.company_id', '=', 'cd.company_id')
+                ->select(
+                    'c.*',
+                    'p.project_title',
+                    'u.email as freelancer_email',
+                    'fd.first_name',
+                    'fd.last_name',
+                    'cd.company_name'
+                )
+                ->where('c.contract_id', $request->contract_id)
+                ->first();
+
+            if (!$contract) {
+                return response()->json(
+                    MessageHelper::error('Contract not found'),
+                    404
+                );
+            }
+
+            // Store old status for logging
+            $oldStatus = $contract->status;
+            $newStatus = $request->status;
+
+            // Update contract status
+            DB::table('contracts')
+                ->where('contract_id', $request->contract_id)
+                ->update([
+                    'status' => $newStatus,
+                    'updated_at' => now()
+                ]);
+
+            // Update related project status based on contract status
+            $projectStatus = $this->mapContractStatusToProjectStatus($newStatus);
+            if ($projectStatus) {
+                DB::table('projects')
+                    ->where('project_id', $contract->project_id)
+                    ->update([
+                        'status' => $projectStatus,
+                        'updated_at' => now()
+                    ]);
+            }
+
+            // Log activity
+            DB::table('activity_logs')->insert([
+                'user_id' => auth()->id(),
+                'action' => 'Contract Status Updated',
+                'entity_type' => 'contract',
+                'entity_id' => $request->contract_id,
+                'old_values' => json_encode(['status' => $oldStatus]),
+                'new_values' => json_encode(['status' => $newStatus]),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'created_at' => now()
+            ]);
+
+            // Send email notification to freelancer
+            $freelancerName = trim($contract->first_name . ' ' . $contract->last_name);
+            $emailData = [
+                'freelancerName' => $freelancerName,
+                'projectTitle' => $contract->project_title,
+                'contractTitle' => $contract->contract_title,
+                'oldStatus' => $oldStatus,
+                'newStatus' => $newStatus,
+                'companyName' => $contract->company_name
+            ];
+
+            try {
+                Mail::send('emails.contract_status_update', $emailData, function ($message) use ($contract) {
+                    $message->to($contract->freelancer_email)
+                            ->subject('Contract Status Updated - ' . $contract->contract_title);
+                });
+            } catch (\Exception $mailException) {
+                Log::error('Failed to send email notification: ' . $mailException->getMessage());
+                // Continue execution even if email fails
+            }
+
+            // Create notification for freelancer
+            DB::table('notifications')->insert([
+                'user_id' => $contract->freelancer_id,
+                'title' => 'Contract Status Updated',
+                'message' => "Your contract '{$contract->contract_title}' status has been changed from {$oldStatus} to {$newStatus}.",
+                'type' => 'Info',
+                'action_url' => "/freelancer/contract/{$contract->contract_id}",
+                'created_at' => now()
+            ]);
+
+            return response()->json(
+                MessageHelper::success('Contract status updated successfully', [
+                    'contract_id' => $contract->contract_id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'project_status' => $projectStatus
+                ])
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Update contract status error: ' . $e->getMessage());
+            return response()->json(
+                MessageHelper::error('Failed to update contract status: ' . $e->getMessage()),
+                500
+            );
+        }
+    }
+
+    /**
+     * Map contract status to appropriate project status
+     *
+     * @param string $contractStatus
+     * @return string|null
+     */
+    private function mapContractStatusToProjectStatus(string $contractStatus): ?string
+    {
+        return match ($contractStatus) {
+            'Pending' => 'Published',
+            'Active' => 'In Progress',
+            'Completed' => 'Completed',
+            'Cancelled' => 'Cancelled',
+            'Disputed' => 'In Progress', // Keep as in progress during dispute
+            default => null
+        };
     }
 }

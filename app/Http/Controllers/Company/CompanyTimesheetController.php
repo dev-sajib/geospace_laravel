@@ -165,23 +165,45 @@ class CompanyTimesheetController extends Controller
 
             // Get comments for each day
             foreach ($days as $day) {
+                // Use a subquery to get only one company_detail per user (the one with max company_id)
                 $day->comments = DB::table('timesheet_day_comments as tdc')
                     ->leftJoin('users as u', 'tdc.comment_by', '=', 'u.user_id')
                     ->leftJoin('freelancer_details as fd', function($join) {
                         $join->on('u.user_id', '=', 'fd.user_id')
                              ->where('u.role_id', '=', 2); // Freelancer role
                     })
-                    ->leftJoin('company_details as cd', function($join) {
+                    ->leftJoin(DB::raw('(SELECT cd1.user_id, cd1.company_name 
+                                        FROM company_details cd1
+                                        INNER JOIN (
+                                            SELECT user_id, MAX(company_id) as max_company_id
+                                            FROM company_details
+                                            GROUP BY user_id
+                                        ) cd2 ON cd1.user_id = cd2.user_id AND cd1.company_id = cd2.max_company_id) as cd'), function($join) {
                         $join->on('u.user_id', '=', 'cd.user_id')
                              ->where('u.role_id', '=', 3); // Company role
                     })
                     ->where('tdc.day_id', $day->day_id)
                     ->select(
-                        'tdc.*',
+                        'tdc.comment_id',
+                        'tdc.day_id',
+                        'tdc.timesheet_id',
+                        'tdc.comment_by',
+                        'tdc.comment_type',
+                        'tdc.comment_text',
+                        'tdc.created_at',
                         DB::raw("COALESCE(
                             CONCAT(fd.first_name, ' ', fd.last_name),
                             cd.company_name
                         ) as commenter_name")
+                    )
+                    ->groupBy(
+                        'tdc.comment_id',
+                        'tdc.day_id',
+                        'tdc.timesheet_id',
+                        'tdc.comment_by',
+                        'tdc.comment_type',
+                        'tdc.comment_text',
+                        'tdc.created_at'
                     )
                     ->orderBy('tdc.created_at', 'desc')
                     ->get();

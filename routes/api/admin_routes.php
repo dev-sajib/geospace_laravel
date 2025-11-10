@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ContractManagementController;
 use App\Http\Controllers\Admin\AdminTimesheetManagementController;
 use App\Http\Controllers\Admin\AdminVideoSupportController;
+use App\Http\Controllers\Admin\PaymentBatchApprovalController;
 use App\Http\Controllers\DisputeController;
 
 /*
@@ -76,6 +77,17 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('company-payments', [AdminTimesheetManagementController::class, 'companyPayments'])->name('company');
         Route::post('{paymentId}/verify', [AdminTimesheetManagementController::class, 'verifyCompanyPayment'])->name('verify');
+    });
+
+    // TRANSACTION OVERVIEW
+    Route::get('TransactionOverviewList', [AdminTimesheetManagementController::class, 'transactionOverviewList'])->name('transaction.overview');
+
+    // PAYMENT BATCH APPROVAL (Platform to Freelancer)
+    Route::controller(PaymentBatchApprovalController::class)->group(function () {
+        Route::get('PaymentToFreelancerList', 'paymentToFreelancerList')->name('payment.batch.approval');
+        Route::get('payments/{paymentId}/details', 'getPaymentDetails')->name('payment.details');
+        Route::post('payments/{paymentId}/process', 'processPayment')->name('payment.process');
+        Route::get('payments/stats', 'paymentsStats')->name('payment.stats');
     });
 
     // INVOICE MANAGEMENT

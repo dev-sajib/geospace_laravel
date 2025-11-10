@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Company\HomeController as CompanyHomeController;
 use App\Http\Controllers\Company\CompanyTimesheetController;
 use App\Http\Controllers\Company\CompanyVideoSupportController;
+use App\Http\Controllers\Company\CompanyInvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,6 +44,9 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
 
         // Freelancer Profiles
         Route::get('GetFreelancerProfiles', 'getFreelancerProfiles')->name('freelancer.profiles');
+
+        // Contract Management
+        Route::post('UpdateContractStatus', 'updateContractStatus')->name('contract.status.update');
     });
 
     // TIMESHEET MANAGEMENT
@@ -62,8 +66,17 @@ Route::prefix('company')->middleware(['auth:api'])->name('api.company.')->group(
     });
 
     // INVOICE & PAYMENT MANAGEMENT
-    Route::prefix('invoices')->name('invoices.')->group(function () {
+    Route::controller(CompanyInvoiceController::class)->prefix('invoices')->name('invoices.')->group(function () {
+        Route::get('/', 'getInvoices')->name('list');
+        Route::get('{invoice_id}/details', 'getInvoiceDetails')->name('details');
+        Route::post('{invoice_id}/update-status', 'updateInvoiceStatus')->name('update.status');
         Route::post('{invoiceId}/complete-payment', [CompanyTimesheetController::class, 'completePayment'])->name('complete.payment');
+    });
+
+    // UPCOMING PAYMENTS MANAGEMENT
+    Route::controller(CompanyInvoiceController::class)->prefix('upcoming-payments')->name('upcoming-payments.')->group(function () {
+        Route::get('/', 'getUpcomingPayments')->name('list');
+        Route::post('/process-payment', 'processPayment')->name('process');
     });
 
     Route::prefix('payments')->name('payments.')->group(function () {

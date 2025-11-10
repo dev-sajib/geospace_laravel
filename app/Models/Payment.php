@@ -14,34 +14,42 @@ class Payment extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'contract_id',
+        'invoice_id',
         'timesheet_id',
+        'payment_request_id',
+        'payment_type',
         'amount',
         'currency',
-        'payment_type',
         'status',
-        'payment_method',
         'transaction_id',
-        'due_date',
-        'paid_at'
+        'payment_method',
+        'payment_date',
+        'verified_by',
+        'verified_at',
+        'verification_notes'
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'due_date' => 'date',
-        'paid_at' => 'datetime',
+        'payment_date' => 'datetime',
+        'verified_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
 
     // Relationships
-    public function contract()
+    public function invoice()
     {
-        return $this->belongsTo(Contract::class, 'contract_id', 'contract_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id', 'invoice_id');
     }
 
     public function timesheet()
     {
         return $this->belongsTo(Timesheet::class, 'timesheet_id', 'timesheet_id');
+    }
+
+    public function verifiedBy()
+    {
+        return $this->belongsTo(User::class, 'verified_by', 'user_id');
     }
 }
