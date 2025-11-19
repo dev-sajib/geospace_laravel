@@ -25,19 +25,19 @@ INSERT IGNORE INTO dispute_status (id, status_name, status_description, created_
 (4, 'Closed', 'Dispute has been closed', NOW(), NOW());
 
 -- Insert Test Admin User
-INSERT IGNORE INTO users (id, email, email_verified_at, password, role_id, is_active, created_at, updated_at) VALUES
-(1, 'admin@geospace.com', NOW(), '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, NOW(), NOW());
+INSERT IGNORE INTO users (user_id, email, email_verified_at, password_hash, role_id, is_active, created_at, updated_at) VALUES
+(1, 'admin@geospace.com', NOW(), '$2y$12$Vogu73ukbhZ0AyJp3YjGjOTTQw2o2aUAe1yKBF9QYvAMXl4JU5m.e', 1, 1, NOW(), NOW());
 
 -- Insert Admin Details
 INSERT IGNORE INTO admin_details (user_id, first_name, last_name, phone, department, created_at, updated_at) VALUES
 (1, 'System', 'Administrator', '+1234567890', 'IT', NOW(), NOW());
 
 -- Insert Test Freelancer User
-INSERT IGNORE INTO users (id, email, email_verified_at, password, role_id, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO users (user_id, email, email_verified_at, password_hash, role_id, is_active, created_at, updated_at) VALUES
 (2, 'freelancer@geospace.com', NOW(), '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 1, NOW(), NOW());
 
 -- Insert Test Company User
-INSERT IGNORE INTO users (id, email, email_verified_at, password, role_id, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO users (user_id, email, email_verified_at, password_hash, role_id, is_active, created_at, updated_at) VALUES
 (3, 'company@geospace.com', NOW(), '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 1, NOW(), NOW());
 
 -- Note: Password for all test accounts is 'password123'

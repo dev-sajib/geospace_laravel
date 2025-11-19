@@ -19,7 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*', 'https://geospace-three.vercel.app'],
+    'allowed_origins' => env('APP_ENV') === 'production'
+        ? ['https://geospace-three.vercel.app', 'https://geospace-laravel-production.up.railway.app']
+        : ['*'],
 
     'allowed_origins_patterns' => [],
 
@@ -29,6 +31,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
+    'supports_credentials' => env('APP_ENV') === 'production' ? true : false,
 
 ];
