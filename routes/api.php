@@ -30,6 +30,7 @@ Route::get('/health', function () {
     ]);
 });
 
+
 // DATABASE HEALTH CHECK
 Route::get('/health/db', function () {
     try {

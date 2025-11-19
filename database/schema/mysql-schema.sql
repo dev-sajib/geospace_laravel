@@ -69,6 +69,7 @@ CREATE TABLE `company_details` (
   `company_name` varchar(255) NOT NULL,
   `contact_first_name` varchar(100) DEFAULT NULL,
   `contact_last_name` varchar(100) DEFAULT NULL,
+  `contact_designation` varchar(100) DEFAULT NULL,
   `contact_phone` varchar(20) DEFAULT NULL,
   `company_type` varchar(100) DEFAULT NULL,
   `industry` varchar(100) DEFAULT NULL,
@@ -305,6 +306,41 @@ CREATE TABLE `file_uploads` (
   PRIMARY KEY (`file_id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `file_uploads_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `freelancer_bank_information`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `freelancer_bank_information` (
+  `bank_info_id` int NOT NULL AUTO_INCREMENT,
+  `freelancer_id` int NOT NULL,
+  `bank_name` varchar(255) NOT NULL,
+  `account_holder_name` varchar(255) NOT NULL,
+  `account_number` varchar(50) NOT NULL,
+  `account_type` enum('Checking','Savings','Business') NOT NULL DEFAULT 'Checking',
+  `routing_number` varchar(30) DEFAULT NULL,
+  `swift_code` varchar(20) DEFAULT NULL,
+  `iban` varchar(50) DEFAULT NULL,
+  `bank_address` text,
+  `bank_city` varchar(100) DEFAULT NULL,
+  `bank_state` varchar(100) DEFAULT NULL,
+  `bank_country` varchar(100) NOT NULL,
+  `bank_postal_code` varchar(20) DEFAULT NULL,
+  `intermediate_bank_name` varchar(255) DEFAULT NULL,
+  `intermediate_swift_code` varchar(20) DEFAULT NULL,
+  `currency` varchar(3) NOT NULL DEFAULT 'CAD',
+  `is_primary` tinyint(1) DEFAULT '0',
+  `is_verified` tinyint(1) DEFAULT '0',
+  `verification_document` varchar(500) DEFAULT NULL,
+  `notes` text,
+  `status` enum('Active','Inactive','Pending_Verification') DEFAULT 'Pending_Verification',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`bank_info_id`),
+  UNIQUE KEY `unique_primary_bank` (`freelancer_id`,`is_primary`),
+  KEY `idx_freelancer_bank` (`freelancer_id`),
+  KEY `idx_bank_status` (`status`),
+  CONSTRAINT `freelancer_bank_information_ibfk_1` FOREIGN KEY (`freelancer_id`) REFERENCES `freelancer_details` (`freelancer_detail_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `freelancer_details`;
@@ -750,7 +786,6 @@ CREATE TABLE `users` (
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role_id` int NOT NULL,
-  `user_position` varchar(100) DEFAULT NULL,
   `auth_provider` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT '1',
   `is_verified` tinyint(1) DEFAULT '0',
@@ -861,3 +896,69 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (22,'2025_11_02_130
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (23,'2025_11_02_130002_migrate_users_personal_data_to_role_tables',22);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (24,'2025_11_02_130003_remove_personal_fields_from_users',23);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (25,'2025_11_02_110002_migrate_user_details_to_role_tables',24);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (26,'2025_10_28_151549_create_activity_logs_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (27,'2025_10_28_151549_create_certifications_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (28,'2025_10_28_151549_create_company_details_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (29,'2025_10_28_151549_create_contracts_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (30,'2025_10_28_151549_create_conversation_participants_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (31,'2025_10_28_151549_create_conversations_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (32,'2025_10_28_151549_create_dispute_messages_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (33,'2025_10_28_151549_create_dispute_status_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (34,'2025_10_28_151549_create_dispute_tickets_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (35,'2025_10_28_151549_create_education_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (36,'2025_10_28_151549_create_expertise_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (37,'2025_10_28_151549_create_feedback_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (38,'2025_10_28_151549_create_file_uploads_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (39,'2025_10_28_151549_create_freelancer_earnings_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (40,'2025_10_28_151549_create_invoices_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (41,'2025_10_28_151549_create_jobs_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (42,'2025_10_28_151549_create_menu_items_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (43,'2025_10_28_151549_create_messages_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (44,'2025_10_28_151549_create_notifications_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (45,'2025_10_28_151549_create_payment_requests_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (46,'2025_10_28_151549_create_payments_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (47,'2025_10_28_151549_create_portfolio_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (48,'2025_10_28_151549_create_projects_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (49,'2025_10_28_151549_create_role_permissions_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (50,'2025_10_28_151549_create_roles_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (51,'2025_10_28_151549_create_skills_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (52,'2025_10_28_151549_create_timesheet_day_comments_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (53,'2025_10_28_151549_create_timesheet_days_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (54,'2025_10_28_151549_create_timesheet_status_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (55,'2025_10_28_151549_create_timesheets_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (56,'2025_10_28_151549_create_user_details_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (57,'2025_10_28_151549_create_users_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (58,'2025_10_28_151549_create_video_support_requests_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (59,'2025_10_28_151549_create_visitor_logs_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (60,'2025_10_28_151549_create_work_experience_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (61,'2025_10_28_151552_add_foreign_keys_to_activity_logs_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (62,'2025_10_28_151552_add_foreign_keys_to_certifications_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (63,'2025_10_28_151552_add_foreign_keys_to_company_details_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (64,'2025_10_28_151552_add_foreign_keys_to_contracts_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (65,'2025_10_28_151552_add_foreign_keys_to_conversation_participants_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (66,'2025_10_28_151552_add_foreign_keys_to_dispute_messages_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (67,'2025_10_28_151552_add_foreign_keys_to_dispute_tickets_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (68,'2025_10_28_151552_add_foreign_keys_to_education_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (69,'2025_10_28_151552_add_foreign_keys_to_expertise_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (70,'2025_10_28_151552_add_foreign_keys_to_feedback_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (71,'2025_10_28_151552_add_foreign_keys_to_file_uploads_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (72,'2025_10_28_151552_add_foreign_keys_to_freelancer_earnings_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (73,'2025_10_28_151552_add_foreign_keys_to_invoices_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (74,'2025_10_28_151552_add_foreign_keys_to_messages_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (75,'2025_10_28_151552_add_foreign_keys_to_notifications_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (76,'2025_10_28_151552_add_foreign_keys_to_payment_requests_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (77,'2025_10_28_151552_add_foreign_keys_to_payments_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (78,'2025_10_28_151552_add_foreign_keys_to_portfolio_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (79,'2025_10_28_151552_add_foreign_keys_to_projects_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (80,'2025_10_28_151552_add_foreign_keys_to_skills_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (81,'2025_10_28_151552_add_foreign_keys_to_timesheet_day_comments_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (82,'2025_10_28_151552_add_foreign_keys_to_timesheet_days_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (83,'2025_10_28_151552_add_foreign_keys_to_timesheets_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (84,'2025_10_28_151552_add_foreign_keys_to_user_details_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (85,'2025_10_28_151552_add_foreign_keys_to_users_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (86,'2025_10_28_151552_add_foreign_keys_to_video_support_requests_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (87,'2025_10_28_151552_add_foreign_keys_to_visitor_logs_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (88,'2025_10_28_151552_add_foreign_keys_to_work_experience_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (89,'2025_11_08_180856_add_contact_designation_to_company_details_table',25);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (90,'2025_11_08_180915_migrate_user_position_data_to_role_tables',25);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (91,'2025_11_08_190710_remove_user_position_from_users_table',26);

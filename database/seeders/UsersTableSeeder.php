@@ -25,7 +25,6 @@ class UsersTableSeeder extends Seeder
                 'email' => 'admin@geospace.com',
                 'password_hash' => $defaultPassword,
                 'role_id' => 1, // Admin
-                'user_position' => 'System Administrator',
                 'auth_provider' => null,
                 'is_active' => 1,
                 'is_verified' => 1,
@@ -40,7 +39,6 @@ class UsersTableSeeder extends Seeder
                 'email' => 'sajib@gmail.com',
                 'password_hash' => $defaultPassword,
                 'role_id' => 2, // Freelancer
-                'user_position' => 'Environmental Specialist',
                 'auth_provider' => 'Manual',
                 'is_active' => 1,
                 'is_verified' => 1,
@@ -55,7 +53,6 @@ class UsersTableSeeder extends Seeder
                 'email' => 'company@spacex.com',
                 'password_hash' => $defaultPassword,
                 'role_id' => 3, // Company
-                'user_position' => 'CEO',
                 'auth_provider' => 'Manual',
                 'is_active' => 1,
                 'is_verified' => 1,
@@ -70,7 +67,6 @@ class UsersTableSeeder extends Seeder
                 'email' => 'test@newcompany2.com',
                 'password_hash' => $defaultPassword,
                 'role_id' => 3, // Company
-                'user_position' => 'Company Representative',
                 'auth_provider' => 'Manual',
                 'is_active' => 1,
                 'is_verified' => 1,
