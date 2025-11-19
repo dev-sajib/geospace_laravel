@@ -58,9 +58,9 @@ php artisan storage:link || true\n\
 export MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=false\n\
 export MYSQL_ATTR_SSL_CA=""\n\
 export DB_OPTIONS_SSL_VERIFY=false\n\
-# Run migrations and seed with SSL bypass (continue on failure)\n\
+# Run migrations only (database already seeded manually)\n\
 php artisan migrate --force\n\
-php artisan db:seed --force || echo "Seeding failed, continuing without seed data..."\n\
+echo "Migrations completed. Database pre-seeded manually."\n\
 # Start Apache in foreground\n\
 apache2-foreground' > /start.sh && chmod +x /start.sh
 
