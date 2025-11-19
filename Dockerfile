@@ -54,7 +54,11 @@ php artisan config:cache\n\
 php artisan route:cache\n\
 php artisan view:cache\n\
 php artisan storage:link || true\n\
-# Run migrations and seed\n\
+# Set SSL environment variables for Railway MySQL\n\
+export MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=false\n\
+export MYSQL_ATTR_SSL_CA=""\n\
+export DB_OPTIONS_SSL_VERIFY=false\n\
+# Run migrations and seed with SSL bypass\n\
 php artisan migrate --force\n\
 php artisan db:seed --force\n\
 # Start Apache in foreground\n\
