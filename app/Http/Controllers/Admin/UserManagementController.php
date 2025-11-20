@@ -231,7 +231,7 @@ class UserManagementController extends \App\Http\Controllers\Controller {
 
             $userId = $request->input( 'UserId' );
 
-            $user = User::with( [ 'userDetails', 'companyDetails', 'role' ] )
+            $user = User::with( [ 'companyDetails', 'freelancerDetails', 'adminDetails', 'supportDetails', 'role' ] )
                         ->where( 'user_id', $userId )
                         ->first();
 
