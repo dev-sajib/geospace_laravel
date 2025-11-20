@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ContractManagementController;
 use App\Http\Controllers\Admin\AdminTimesheetManagementController;
 use App\Http\Controllers\Admin\AdminVideoSupportController;
 use App\Http\Controllers\Admin\PaymentBatchApprovalController;
+use App\Http\Controllers\Admin\VisitorAnalyticsController;
 use App\Http\Controllers\DisputeController;
 
 /*
@@ -124,5 +125,12 @@ Route::prefix('admin')->middleware(['auth:api'])->name('api.admin.')->group(func
         Route::post('conversations/{conversationId}/messages', 'sendMessage')->name('messages.send');
         Route::post('conversations/{conversationId}/typing', 'sendTyping')->name('typing.send');
         Route::post('conversations/{conversationId}/close', 'closeConversation')->name('conversations.close');
+    });
+
+    // VISITOR ANALYTICS
+    Route::controller(VisitorAnalyticsController::class)->name('visitor.analytics.')->group(function () {
+        Route::get('VisitorSummaryByDate', 'getVisitorSummaryByDate')->name('summary.by.date');
+        Route::get('VisitorSummaryWeekly', 'getVisitorSummaryWeekly')->name('summary.weekly');
+        Route::get('visitor-analytics/detailed', 'getDetailedVisitorAnalytics')->name('detailed');
     });
 });
